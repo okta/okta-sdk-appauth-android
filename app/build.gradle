@@ -1,0 +1,37 @@
+plugins {
+    id "me.tatarka.retrolambda" version "3.6.0"
+}
+
+apply plugin: "com.android.application"
+apply from: "${rootDir}/gradle/android-common.gradle"
+
+android {
+    defaultConfig {
+        applicationId "com.okta.appauth.android.example"
+        project.archivesBaseName = "appauth-android-example"
+        vectorDrawables.useSupportLibrary = true
+
+        // Make sure this is consistent with the redirect URI used in
+        // res/raw/okta_app_auth_config.json
+        manifestPlaceholders = [
+                "appAuthRedirectScheme": "com.okta.appauth.android.example"
+        ]
+
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+
+dependencies {
+    compile project(":library")
+    compile "com.android.support:appcompat-v7:${rootProject.supportLibVersion}"
+    compile "com.android.support:design:${rootProject.supportLibVersion}"
+    compile "com.github.bumptech.glide:glide:${rootProject.glideVersion}"
+    compile "com.squareup.okio:okio:${rootProject.okioVersion}"
+    compile "joda-time:joda-time:${rootProject.jodaTimeVersion}"
+}
+
+apply from: "${rootDir}/gradle/style.gradle"

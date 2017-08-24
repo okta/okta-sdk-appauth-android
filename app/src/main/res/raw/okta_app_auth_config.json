@@ -1,0 +1,10 @@
+{
+  "client_id": "{your-client-id-here}",
+  "redirect_uri": "{your-redirect-uri}",
+  "scopes": [
+    "openid",
+    "profile",
+    "offline_access"
+  ],
+  "issuer_uri": "{your-okta-org-uri-here}"
+}

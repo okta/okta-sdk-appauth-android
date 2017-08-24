@@ -1,0 +1,31 @@
+apply plugin: "com.android.library"
+
+apply from: "${rootDir}/gradle/android-common.gradle"
+
+group = "com.okta"
+
+android {
+    defaultConfig {
+        project.archivesBaseName = "appauth-android"
+    }
+    buildTypes {
+        debug {
+            manifestPlaceholders = [
+                    "appAuthRedirectScheme": "com.okta.appauth.android.test"
+            ];
+        }
+    }
+}
+
+dependencies {
+    compile "net.openid:appauth:${rootProject.appAuthVersion}"
+    compile "com.android.support:customtabs:${rootProject.supportLibVersion}"
+    compile "com.squareup.okio:okio:${rootProject.okioVersion}"
+
+    testCompile "junit:junit:${rootProject.junitVersion}"
+    testCompile "org.mockito:mockito-core:${rootProject.mockitoVersion}"
+    testCompile "org.robolectric:robolectric:${rootProject.robolectricVersion}"
+    testCompile "com.squareup.assertj:assertj-android:${rootProject.assertjVersion}"
+}
+
+apply from: "${rootDir}/gradle/style.gradle"
