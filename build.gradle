@@ -21,7 +21,7 @@ subprojects {
 
 ext {
     versionNum = 1
-    versionName = "0.0.1"
+    versionName = "0.1.0"
     versionDate = new Date()
 
     // These properties should remain in sync with the values from the AppAuth SDK
@@ -33,6 +33,8 @@ ext {
     // SDK dependency versions
     appAuthVersion = "0.6.1"
     okioVersion = "1.13.0"
+    bintrayVersion = "1.7.3"
+    gradlePluginVersion = "1.5"
 
     // Example app dependency versions
     glideVersion = "3.8.0"

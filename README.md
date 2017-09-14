@@ -8,8 +8,28 @@ To run the example project, clone the repo, and run `./gradlew assemble` from th
 You can then install the example APK onto an Android device or emulator.
 
 ## Installation
+Add the `OktaAppAuth` dependency to your `build.gradle` file:
+### Maven
+```xml
+<dependency>
+  <groupId>com.okta.android</groupId>
+  <artifactId>appauth-android</artifactId>
+  <version>0.1.0</version>
+  <type>pom</type>
+</dependency>
+```
 
-> TODO add installation instructions once we are hosted on JCenter
+### Gradle
+```
+compile 'com.okta.android:appauth-android:0.1.0'
+```
+
+### Ivy
+```xml
+<dependency org='com.okta.android' name='appauth-android' rev='0.1.0'>
+  <artifact name='appauth-android' ext='pom' />
+</dependency>
+```
 
 ## Overview
 This library currently supports:
@@ -74,18 +94,18 @@ are using to log users into your app. In this example, we will call it `LoginAct
 
 public class LoginActivity extends Activity {
 
-    private OktaAuth mOktaAuth;
+    private OktaAppAuth mOktaAuth;
     
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
     
-        mOktaAuth = OktaAuth.getInstance(this);
+        mOktaAuth = OktaAppAuth.getInstance(this);
     
         // Do any of your own setup of the Activity
     
         mOktaAuth.init(
                 this,
-                new OktaAuth.OktaAuthListener() {
+                new OktaAppAuth.OktaAuthListener() {
                     @Override
                     public void onSuccess() {
                         // Handle a successful initialization (e.g. display login button)
@@ -101,7 +121,7 @@ public class LoginActivity extends Activity {
 ```
 
 
-Once the OktaAuth instance is initialized, you can start the authorization flow by simply calling
+Once the OktaAppAuth instance is initialized, you can start the authorization flow by simply calling
 `login` whenever you're ready:
 ```java
 // LoginActivity.java
@@ -130,11 +150,11 @@ the username input. Usually this happens in your `onCreate`:
 ```
 
 ### Get UserInfo
-Once a user logs in, you can use the OktaAuth object to call the OIDC userInfo endpoint to return
+Once a user logs in, you can use the OktaAppAuth object to call the OIDC userInfo endpoint to return
 user information.
 ```java
 private void fetchUserInfo() {
-    mOktaAuth.getUserInfo(new OktaAuth.OktaAuthActionCallback<JSONObject>() {
+    mOktaAuth.getUserInfo(new OktaAppAuth.OktaAuthActionCallback<JSONObject>() {
         @Override
         public void onSuccess(JSONObject response) {
             // Do whatever you need to do with the user info data
@@ -154,7 +174,7 @@ private void fetchUserInfo() {
 ```
 
 ### Performing Authorized Requests
-In addition to the built in userInfo endpoint, you can use the OktaAuth interface to perform
+In addition to the built in userInfo endpoint, you can use the OktaAppAuth interface to perform
 your own authorized requests, whatever they might be. You can use this simple method to make
 your own requests and have the access token automatically added to the `Authorization` header with
 the standard OAuth 2.0 prefix of `Bearer `. The `performAuthorizedRequest` method will also handle
@@ -162,7 +182,7 @@ getting new tokens for you if required:
 ```java
 final URL myUrl; // some protected URL
 
-performAuthorizedRequest(new OktaAuthRequest() {
+mOktaAuth.performAuthorizedRequest(new OktaAppAuth.BearerAuthRequest() {
     @NonNull
     @Override
     public HttpURLConnection createRequest() throws Exception {

@@ -2,7 +2,8 @@ apply plugin: "com.android.library"
 
 apply from: "${rootDir}/gradle/android-common.gradle"
 
-group = "com.okta"
+group = "com.okta.android"
+version = "${rootProject.versionName}"
 
 android {
     defaultConfig {
@@ -17,6 +18,19 @@ android {
     }
 }
 
+buildscript {
+   repositories {
+       jcenter()
+   }
+   dependencies {
+       classpath "com.jfrog.bintray.gradle:gradle-bintray-plugin:${rootProject.bintrayVersion}"
+       classpath "com.github.dcendents:android-maven-gradle-plugin:${rootProject.gradlePluginVersion}"
+   }
+}
+
+apply plugin: 'com.jfrog.bintray'
+apply plugin: "com.github.dcendents.android-maven"
+
 dependencies {
     compile "net.openid:appauth:${rootProject.appAuthVersion}"
     compile "com.android.support:customtabs:${rootProject.supportLibVersion}"
@@ -29,3 +43,24 @@ dependencies {
 }
 
 apply from: "${rootDir}/gradle/style.gradle"
+
+bintray {
+    user = System.getenv("BINTRAY_USER")
+    key = System.getenv("BINTRAY_KEY")
+    configurations = ["archives"]
+    pkg {
+        repo = "com.okta.android"
+        name = "okta-sdk-appauth-android"
+        desc = "Okta Authentication using AppAuth"
+        userOrg = "okta"
+        licenses = ["Apache-2.0"]
+        websiteUrl = "https://github.com/okta/okta-sdk-appauth-android"
+        vcsUrl = "https://github.com/okta/okta-sdk-appauth-android.git"
+        issueTrackerUrl = "https://github.com/okta/okta-sdk-appauth-android/issues"
+        version {
+            name = "${rootProject.versionName}"
+            desc = "Okta Authentication using AppAuth"
+            vcsTag = "${rootProject.versionName}"
+        }
+    }
+}
