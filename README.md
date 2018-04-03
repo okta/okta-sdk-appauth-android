@@ -8,8 +8,11 @@ To run the example project, clone the repo, and run `./gradlew assemble` from th
 You can then install the example APK onto an Android device or emulator.
 
 ## Installation
+
 Add the `OktaAppAuth` dependency to your `build.gradle` file:
+
 ### Maven
+
 ```xml
 <dependency>
   <groupId>com.okta.android</groupId>
@@ -20,11 +23,13 @@ Add the `OktaAppAuth` dependency to your `build.gradle` file:
 ```
 
 ### Gradle
-```
+
+```bash
 compile 'com.okta.android:appauth-android:0.1.0'
 ```
 
 ### Ivy
+
 ```xml
 <dependency org='com.okta.android' name='appauth-android' rev='0.1.0'>
   <artifact name='appauth-android' ext='pom' />
@@ -32,23 +37,24 @@ compile 'com.okta.android:appauth-android:0.1.0'
 ```
 
 ## Overview
+
 This library currently supports:
-  - [OAuth 2.0 Authorization Code Flow](https://tools.ietf.org/html/rfc6749#section-4.1) using the
-    [PKCE extension](https://tools.ietf.org/html/rfc7636)
+
+- [OAuth 2.0 Authorization Code Flow](https://tools.ietf.org/html/rfc6749#section-4.1) using the [PKCE extension](https://tools.ietf.org/html/rfc7636)
 
 ## Getting Started
-You can create an Okta developer account at
-[https://developer.okta.com/](https://developer.okta.com/).
 
-  1. After login, from the Admin dashboard, navigate to **Applications**&rarr;**Add Application**
-  1. Choose **Native** as the platform
-  1. Populate your new Native OpenID Connect application with values similar to:
+You can create an Okta developer account at [https://developer.okta.com/](https://developer.okta.com/).
 
-| Setting                       | Value                                                            |
+1. After login, from the Admin dashboard, navigate to **Applications**&rarr;**Add Application**
+2. Choose **Native** as the platform
+3. Populate your new Native OpenID Connect application with values similar to:
+
+| Setting              | Value                                               |
 | -------------------- | --------------------------------------------------- |
-| Application Name     | Native OpenId Connect App *(must be unique)* |
-| Redirect URIs            | com.okta.example:/callback |
-| Allowed grant types | Authorization Code, Refresh Token *(recommended)* |
+| Application Name     | Native OpenId Connect App *(must be unique)*        |
+| Redirect URIs        | com.okta.example:/callback                          |
+| Allowed grant types  | Authorization Code, Refresh Token *(recommended)*   |
 
 4. Click **Finish** to redirect back to the *General Settings* of your application.
 5. Copy the **Client ID**, as it will be needed for the client configuration.
@@ -58,8 +64,10 @@ You can create an Okta developer account at
           Otherwise, no one can use it.*
 
 ### Configuration
+
 Create a file called `okta_app_auth_config.json` in your application's `res/raw/` directory with
 the following contents:
+
 ```json
 {
   "client_id": "{clientIdValue}",
@@ -72,12 +80,15 @@ the following contents:
   "issuer_uri": "https://{yourOktaDomain}.com/oauth2/default"
 }
 ```
+
 **Note**: *To receive a **refresh_token**, you must include the `offline_access` scope.*
 
 ### Update the URI Scheme
+
 In order to redirect back to your application from a web browser, you must specify a unique URI to
 your app. To do this, you must define a gradle manifest placeholder in your app's `build.gradle`:
-```
+
+```java
 android.defaultConfig.manifestPlaceholders = [
     "appAuthRedirectScheme": "com.okta.example"
 ]
@@ -87,23 +98,38 @@ Make sure this is consistent with the redirect URI used in `okta_app_auth_config
 if your **Redirect URI** is `com.okta.example:/callback`, the **AppAuth Redirect Scheme** should be
 `com.okta.example`.
 
+#### Chrome Custom Tabs `ERR_UNKNOWN_URL_SCHEME`
+
+There is a [known issue](https://github.com/okta/okta-sdk-appauth-android/issues/8) when redirecting back to the a URI scheme from the browser via Chrome Custom Tabs. This is due to Chrome **not supporting** JavaScript initiated redirects back to native applications.
+
+To handle this, the lead maintainer of AppAuth proposes the following:
+> Create a web page for your redirect URI that displays an interstitial page with a **Click here to return to app** button. [Ian McGinniss (AppAuth-Android Author)](https://github.com/openid/AppAuth-Android/issues/187#issuecomment-285546334)
+
+There is a working sample application referenced [here](https://github.com/iainmcgin/AppAuth-Demo), where the interstitial page is used to capture the `code` and `state` values from the callback, then redirects the user back to the private-use URI scheme specified by the application.
+
+The flow should look similar to:
+**Mobile App** > **Redirect to Okta for Authentication** > **Redirect to Interstitial Page** > **Redirect to Mobile App**
+
+More information on this topic is recorded in [this issue](https://github.com/okta/okta-sdk-appauth-android/issues/8).
+
 ## Authorization
+
 First, initialize the Okta AppAuth SDK in the `Activity#onCreate` method of the Activity that you
 are using to log users into your app. In this example, we will call it `LoginActivity`:
+
 ```java
 // LoginActivity.java
 
 public class LoginActivity extends Activity {
 
     private OktaAppAuth mOktaAuth;
-    
+
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-    
+
         mOktaAuth = OktaAppAuth.getInstance(this);
-    
+
         // Do any of your own setup of the Activity
-    
         mOktaAuth.init(
                 this,
                 new OktaAppAuth.OktaAuthListener() {
@@ -111,7 +137,7 @@ public class LoginActivity extends Activity {
                     public void onSuccess() {
                         // Handle a successful initialization (e.g. display login button)
                     }
-            
+
                     @Override
                     public void onTokenFailure(@NonNull AuthorizationException ex) {
                         // Handle a failed initialization
@@ -121,9 +147,9 @@ public class LoginActivity extends Activity {
 }
 ```
 
-
 Once the OktaAppAuth instance is initialized, you can start the authorization flow by simply calling
 `login` whenever you're ready:
+
 ```java
 // LoginActivity.java
 
@@ -145,12 +171,14 @@ public class LoginActivity extends Activity {
 
 To login using a username hint, simply hookup a `LoginHintChangeHandler` to your `EditText` that has
 the username input. Usually this happens in your `onCreate`:
+
 ```java
 ((EditText)findViewById(R.id.login_hint_value)).addTextChangedListener(
                 new LoginHintChangeHandler(mOktaAuth));
 ```
 
 ### Get UserInfo
+
 Once a user logs in, you can use the OktaAppAuth object to call the OIDC userInfo endpoint to return
 user information.
 ```java
@@ -175,11 +203,13 @@ private void fetchUserInfo() {
 ```
 
 ### Performing Authorized Requests
+
 In addition to the built in userInfo endpoint, you can use the OktaAppAuth interface to perform
 your own authorized requests, whatever they might be. You can use this simple method to make
 your own requests and have the access token automatically added to the `Authorization` header with
-the standard OAuth 2.0 prefix of `Bearer `. The `performAuthorizedRequest` method will also handle
+the standard OAuth 2.0 prefix of `Bearer`. The `performAuthorizedRequest` method will also handle
 getting new tokens for you if required:
+
 ```java
 final URL myUrl; // some protected URL
 
@@ -211,7 +241,9 @@ mOktaAuth.performAuthorizedRequest(new OktaAppAuth.BearerAuthRequest() {
 ```
 
 ### Refresh a Token Manually
+
 You can also refresh the `accessToken` if the `refreshToken` is provided.
+
 ```java
 mOktaAuth.refreshAccessToken(new OktaAuth.OktaAuthListener() {
     @Override
@@ -226,6 +258,7 @@ mOktaAuth.refreshAccessToken(new OktaAuth.OktaAuthListener() {
 ```
 
 ### Token Management
+
 Tokens are securely stored in the private Shared Preferences.
 
 ## License
