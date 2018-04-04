@@ -100,15 +100,17 @@ if your **Redirect URI** is `com.okta.example:/callback`, the **AppAuth Redirect
 
 #### Chrome Custom Tabs `ERR_UNKNOWN_URL_SCHEME`
 
-There is a [known issue](https://github.com/okta/okta-sdk-appauth-android/issues/8) when redirecting back to the a URI scheme from the browser via Chrome Custom Tabs. This is due to Chrome **not supporting** JavaScript initiated redirects back to native applications.
+There is a [known issue](https://github.com/okta/okta-sdk-appauth-android/issues/8) when redirecting back to a URI scheme from the browser via Chrome Custom Tabs. This is due to Chrome **not supporting** JavaScript initiated redirects back to native applications.
 
-To handle this, the lead maintainer of AppAuth proposes the following:
+To handle this, the AppAuth team proposes the following:
 > Create a web page for your redirect URI that displays an interstitial page with a **Click here to return to app** button. [Ian McGinniss (AppAuth-Android Author)](https://github.com/openid/AppAuth-Android/issues/187#issuecomment-285546334)
 
 There is a working sample application referenced [here](https://github.com/iainmcgin/AppAuth-Demo), where the interstitial page is used to capture the `code` and `state` values from the callback, then redirects the user back to the private-use URI scheme specified by the application.
 
 The flow should look similar to:
-**Mobile App** > **Redirect to Okta for Authentication** > **Redirect to Interstitial Page** > **Redirect to Mobile App**
+<p align="center">
+  <img src="https://user-images.githubusercontent.com/20212241/38281780-4c3105dc-3761-11e8-81a5-36337b2ab39a.png" width="500px">
+</p>
 
 More information on this topic is recorded in [this issue](https://github.com/okta/okta-sdk-appauth-android/issues/8).
 
