@@ -8,15 +8,17 @@ version = "${rootProject.versionName}"
 android {
     defaultConfig {
         project.archivesBaseName = "appauth-android"
+        manifestPlaceholders = [
+                "appAuthRedirectScheme": "com.okta.appauth.android.test"
+        ]
     }
-    buildTypes {
-        debug {
-            manifestPlaceholders = [
-                    "appAuthRedirectScheme": "com.okta.appauth.android.test"
-            ];
+    testOptions {
+        unitTests {
+            includeAndroidResources = true
         }
     }
 }
+
 
 buildscript {
    repositories {
@@ -32,14 +34,14 @@ apply plugin: 'com.jfrog.bintray'
 apply plugin: "com.github.dcendents.android-maven"
 
 dependencies {
-    compile "net.openid:appauth:${rootProject.appAuthVersion}"
-    compile "com.android.support:customtabs:${rootProject.supportLibVersion}"
-    compile "com.squareup.okio:okio:${rootProject.okioVersion}"
+    implementation "net.openid:appauth:${rootProject.appAuthVersion}"
+    implementation "androidx.browser:browser:${rootProject.browserVersion}"
+    implementation "com.squareup.okio:okio:${rootProject.okioVersion}"
 
-    testCompile "junit:junit:${rootProject.junitVersion}"
-    testCompile "org.mockito:mockito-core:${rootProject.mockitoVersion}"
-    testCompile "org.robolectric:robolectric:${rootProject.robolectricVersion}"
-    testCompile "com.squareup.assertj:assertj-android:${rootProject.assertjVersion}"
+    testImplementation "junit:junit:${rootProject.junitVersion}"
+    testImplementation "org.mockito:mockito-core:${rootProject.mockitoVersion}"
+    testImplementation "org.robolectric:robolectric:${rootProject.robolectricVersion}"
+    testImplementation "com.squareup.assertj:assertj-android:${rootProject.assertjVersion}"
 }
 
 apply from: "${rootDir}/gradle/style.gradle"

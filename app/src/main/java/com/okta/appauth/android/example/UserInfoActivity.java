@@ -18,17 +18,17 @@ package com.okta.appauth.android.example;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
-import android.support.annotation.MainThread;
-import android.support.annotation.NonNull;
-import android.support.design.widget.Snackbar;
-import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
+import androidx.annotation.MainThread;
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
 
 import com.bumptech.glide.Glide;
+import com.google.android.material.snackbar.Snackbar;
 import com.okta.appauth.android.OktaAppAuth;
 import net.openid.appauth.AuthorizationException;
 import org.joda.time.format.DateTimeFormat;
@@ -95,6 +95,7 @@ public class UserInfoActivity extends AppCompatActivity {
         // user info is retained to survive activity restarts, such as when rotating the
         // device or switching apps. This isn't essential, but it helps provide a less
         // jarring UX when these events occur - data does not just disappear from the view.
+        super.onSaveInstanceState(state);
         if (mUserInfoJson.get() != null) {
             state.putString(KEY_USER_INFO, mUserInfoJson.toString());
         }
@@ -175,7 +176,7 @@ public class UserInfoActivity extends AppCompatActivity {
         findViewById(R.id.loading_container).setVisibility(View.VISIBLE);
         findViewById(R.id.authorized).setVisibility(View.GONE);
 
-        ((TextView)findViewById(R.id.loading_description)).setText(message);
+        ((TextView) findViewById(R.id.loading_description)).setText(message);
     }
 
     /**

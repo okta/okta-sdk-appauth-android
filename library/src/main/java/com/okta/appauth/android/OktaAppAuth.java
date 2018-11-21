@@ -20,17 +20,17 @@ import android.content.Context;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
-import android.support.annotation.AnyThread;
-import android.support.annotation.ColorInt;
-import android.support.annotation.MainThread;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import android.support.annotation.WorkerThread;
-import android.support.customtabs.CustomTabsIntent;
 import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.util.Log;
+import androidx.annotation.AnyThread;
+import androidx.annotation.ColorInt;
+import androidx.annotation.MainThread;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.annotation.WorkerThread;
+import androidx.browser.customtabs.CustomTabsIntent;
 
 import net.openid.appauth.AppAuthConfiguration;
 import net.openid.appauth.AuthState;
@@ -602,7 +602,7 @@ public class OktaAppAuth {
                     return;
                 }
                 conn.setRequestProperty("Authorization", "Bearer " + accessToken);
-                conn.setRequestProperty("X-Okta-User-Agent",
+                conn.setRequestProperty("User-Agent",
                         "Android/" + Build.VERSION.SDK_INT + " " +
                                 BuildConfig.APPLICATION_ID + "/" + BuildConfig.VERSION_NAME
 

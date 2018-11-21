@@ -32,7 +32,6 @@ import org.mockito.Spy;
 import org.robolectric.Robolectric;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
-import org.robolectric.annotation.Config;
 
 import static android.content.Context.MODE_PRIVATE;
 
@@ -43,7 +42,6 @@ import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
 
 @RunWith(RobolectricTestRunner.class)
-@Config(constants = BuildConfig.class, sdk=16)
 public class TokenExchangeActivityTest {
 
     @Mock PendingIntent mCompleteIntent;

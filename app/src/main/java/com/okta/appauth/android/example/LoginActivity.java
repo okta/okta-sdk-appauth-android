@@ -20,15 +20,15 @@ import android.app.PendingIntent;
 import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
-import android.support.annotation.ColorRes;
-import android.support.annotation.MainThread;
-import android.support.annotation.NonNull;
-import android.support.design.widget.Snackbar;
-import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.TextView;
+import androidx.annotation.ColorRes;
+import androidx.annotation.MainThread;
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
+import com.google.android.material.snackbar.Snackbar;
 
 import com.okta.appauth.android.OktaAppAuth;
 import com.okta.appauth.android.OktaAppAuth.LoginHintChangeHandler;
@@ -61,7 +61,7 @@ public class LoginActivity extends AppCompatActivity {
 
         findViewById(R.id.start_auth).setOnClickListener((View view) -> startAuth());
 
-        ((EditText)findViewById(R.id.login_hint_value)).addTextChangedListener(
+        ((EditText) findViewById(R.id.login_hint_value)).addTextChangedListener(
                 new LoginHintChangeHandler(mOktaAppAuth));
 
         if (getIntent().getBooleanExtra(EXTRA_FAILED, false)) {
@@ -127,7 +127,7 @@ public class LoginActivity extends AppCompatActivity {
         findViewById(R.id.loading_container).setVisibility(View.VISIBLE);
         findViewById(R.id.auth_container).setVisibility(View.GONE);
 
-        ((TextView)findViewById(R.id.loading_description)).setText(loadingMessage);
+        ((TextView) findViewById(R.id.loading_description)).setText(loadingMessage);
     }
 
     @MainThread
