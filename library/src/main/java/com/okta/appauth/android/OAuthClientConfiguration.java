@@ -193,7 +193,7 @@ public class OAuthClientConfiguration {
             throws InvalidJsonDocumentException {
         JsonParser jsonParser = JsonParser.forJson(jsonObject);
 
-        mConfigHash = jsonObject.hashCode();
+        mConfigHash = jsonObject.toString().hashCode();
 
         mClientId = jsonParser.getRequiredString("client_id");
         mRedirectUri = jsonParser.getRequiredUri("redirect_uri");
