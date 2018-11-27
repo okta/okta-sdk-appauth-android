@@ -102,6 +102,21 @@ public class OAuthClientConfigurationTest {
     }
 
     @Test
+    public void testConfigurationHashesJSONString() throws InvalidJsonDocumentException {
+        sut = new OAuthClientConfiguration(
+                mContext,
+                mPrefs,
+                ConfigurationStreams.getExampleConfiguration()
+        );
+        sut.acceptConfiguration();
+        assertThat(sut.hasConfigurationChanged()).isFalse();
+        sut.readConfiguration(sut.fetchConfiguration(ConfigurationStreams.getExampleConfiguration()));
+        assertThat(sut.hasConfigurationChanged()).isFalse();
+        sut.readConfiguration(sut.fetchConfiguration(ConfigurationStreams.getOtherConfiguration()));
+        assertThat(sut.hasConfigurationChanged()).isTrue();
+    }
+
+    @Test
     public void testConfigurationIsInvalidForEmptyScopes() {
         sut = new OAuthClientConfiguration(
                 mContext,
