@@ -511,8 +511,8 @@ public class OktaAppAuth {
             @Override
             public void run() {
                 Log.i(TAG, "Warming up browser instance for auth request");
-                CustomTabsIntent.Builder intentBuilder =
-                        createAuthorizationServiceIfNeeded().createCustomTabsIntentBuilder(mAuthRequest.get().toUri());
+                CustomTabsIntent.Builder intentBuilder = createAuthorizationServiceIfNeeded()
+                        .createCustomTabsIntentBuilder(mAuthRequest.get().toUri());
                 intentBuilder.setToolbarColor(mCustomTabColor);
                 mAuthIntent.set(intentBuilder.build());
                 mAuthIntentLatch.countDown();
