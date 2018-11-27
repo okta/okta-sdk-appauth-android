@@ -1,5 +1,7 @@
 package com.okta.appauth.android;
 
+import android.content.Context;
+
 import net.openid.appauth.AuthState;
 import net.openid.appauth.AuthorizationException;
 import net.openid.appauth.AuthorizationService;
@@ -35,15 +37,55 @@ public class OktaAppAuthTest {
     @Mock
     ClientAuthentication mClientAuthentication;
     private OktaAppAuth sut;
+    private Context mContext;
 
     @Before
-    public void setUp() {
+    public void setUp() throws Exception {
+        mContext = RuntimeEnvironment.application.getApplicationContext();
         MockitoAnnotations.initMocks(this);
         sut = OktaAppAuth.getInstance(RuntimeEnvironment.application.getApplicationContext());
         sut.mAuthService = mAuthService;
         sut.mAuthStateManager = mAuthStateManager;
         sut.mConfiguration = mConfiguration;
         when(mAuthStateManager.getCurrent()).thenReturn(mAuthState);
+    }
+
+    @Test
+    public void testDisposeNullsAuthenticationService() {
+        sut = OktaAppAuth.getInstance(mContext);
+        sut.mAuthService = new AuthorizationService(mContext);
+        assertThat(sut.mAuthService).isNotNull();
+        sut.dispose();
+        assertThat(sut.mAuthService).isNull();
+    }
+
+    @Test
+    public void testAuthServiceCreatesWhenNeeded() {
+        sut = OktaAppAuth.getInstance(mContext);
+        sut.mAuthService = null;
+        sut.createAuthorizationServiceIfNeeded();
+        assertThat(sut.mAuthService).isNotNull();
+    }
+
+    @Test
+    public void testAuthServiceUsesOriginalWhenSet() {
+        AuthorizationService authorizationService = new AuthorizationService(mContext);
+        sut = OktaAppAuth.getInstance(mContext);
+        sut.mAuthService = authorizationService;
+        sut.createAuthorizationServiceIfNeeded();
+        assertThat(sut.mAuthService).isNotNull();
+        assertThat(sut.mAuthService).isSameAs(authorizationService);
+    }
+
+    @Test
+    public void testAuthServiceRecreatesWhenDisposed() {
+        AuthorizationService authorizationService = new AuthorizationService(mContext);
+        sut = OktaAppAuth.getInstance(mContext);
+        sut.mAuthService = authorizationService;
+        sut.dispose();
+        sut.createAuthorizationServiceIfNeeded();
+        assertThat(sut.mAuthService).isNotNull();
+        assertThat(sut.mAuthService).isNotSameAs(authorizationService);
     }
 
     @Test

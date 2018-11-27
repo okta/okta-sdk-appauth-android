@@ -89,6 +89,8 @@ public class OktaAppAuth {
     @ColorInt
     protected int mCustomTabColor;
 
+    protected Context mContext;
+
     /**
      * Retrieve the manager object via the static {@link WeakReference} or construct a new instance.
      *
@@ -113,9 +115,10 @@ public class OktaAppAuth {
      */
     @AnyThread
     protected OktaAppAuth(Context context) {
+        mContext = context.getApplicationContext();
         mExecutor = Executors.newSingleThreadExecutor();
-        mAuthStateManager = AuthStateManager.getInstance(context);
-        mConfiguration = OAuthClientConfiguration.getInstance(context);
+        mAuthStateManager = AuthStateManager.getInstance(mContext);
+        mConfiguration = OAuthClientConfiguration.getInstance(mContext);
     }
 
     /**
@@ -208,6 +211,7 @@ public class OktaAppAuth {
     public void dispose() {
         if (mAuthService != null) {
             mAuthService.dispose();
+            mAuthService = null;
         }
     }
 
@@ -275,7 +279,8 @@ public class OktaAppAuth {
             return;
         }
 
-        mAuthService.performTokenRequest(
+
+        createAuthorizationServiceIfNeeded().performTokenRequest(
                 mAuthStateManager.getCurrent().createTokenRefreshRequest(),
                 clientAuthentication,
                 new AuthorizationService.TokenResponseCallback() {
@@ -416,7 +421,7 @@ public class OktaAppAuth {
         }
 
         mAuthStateManager.getCurrent().performActionWithFreshTokens(
-                mAuthService,
+                createAuthorizationServiceIfNeeded(),
                 new AuthStateAction() {
                     @Override
                     public void execute(@Nullable String accessToken, @Nullable String idToken,
@@ -507,7 +512,7 @@ public class OktaAppAuth {
             public void run() {
                 Log.i(TAG, "Warming up browser instance for auth request");
                 CustomTabsIntent.Builder intentBuilder =
-                        mAuthService.createCustomTabsIntentBuilder(mAuthRequest.get().toUri());
+                        createAuthorizationServiceIfNeeded().createCustomTabsIntentBuilder(mAuthRequest.get().toUri());
                 intentBuilder.setToolbarColor(mCustomTabColor);
                 mAuthIntent.set(intentBuilder.build());
                 mAuthIntentLatch.countDown();
@@ -544,6 +549,17 @@ public class OktaAppAuth {
         mAuthIntent.set(null);
     }
 
+    /**
+     * Handles recreating the authorization service if it has been cleared out.
+     * @return a usable instance of {@see AuthorizationService}
+     */
+    AuthorizationService createAuthorizationServiceIfNeeded() {
+        if (mAuthService == null) {
+            recreateAuthorizationService(mContext);
+        }
+        return mAuthService;
+    }
+
     private AuthorizationService createAuthorizationService(Context context) {
         Log.i(TAG, "Creating authorization service");
         AppAuthConfiguration.Builder builder = new AppAuthConfiguration.Builder();
@@ -560,7 +576,7 @@ public class OktaAppAuth {
         }
 
         Log.d(TAG, "Starting authorization flow");
-        mAuthService.performAuthorizationRequest(
+        createAuthorizationServiceIfNeeded().performAuthorizationRequest(
                 mAuthRequest.get(),
                 completionIntent,
                 cancelIntent,
