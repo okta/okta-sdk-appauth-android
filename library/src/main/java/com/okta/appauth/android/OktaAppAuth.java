@@ -261,6 +261,7 @@ public class OktaAppAuth {
     public void refreshAccessToken(final OktaAuthListener listener) {
         if (!hasRefreshToken()) {
             Log.d(TAG, "Calling refreshAccessToken without a refresh token");
+            listener.onTokenFailure(AuthorizationException.TokenRequestErrors.INVALID_REQUEST);
             return;
         }
 
@@ -270,6 +271,7 @@ public class OktaAppAuth {
         } catch (UnsupportedAuthenticationMethod ex) {
             Log.e(TAG, "Token request cannot be made; client authentication for the token "
                     + "endpoint could not be constructed (%s)", ex);
+            listener.onTokenFailure(AuthorizationException.TokenRequestErrors.INVALID_REQUEST);
             return;
         }
 
