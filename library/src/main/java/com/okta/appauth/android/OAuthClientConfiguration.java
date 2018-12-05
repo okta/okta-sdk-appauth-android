@@ -194,7 +194,7 @@ public class OAuthClientConfiguration {
             throws InvalidJsonDocumentException {
         JsonParser jsonParser = JsonParser.forJson(jsonObject);
 
-        //We can not take hash code directly from JSONObject
+        //We can not take has code directly from JSONObject
         //because JSONObject does not follow java has code contract
         mConfigHash = jsonObject.toString().hashCode();
 
