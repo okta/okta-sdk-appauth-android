@@ -17,12 +17,16 @@ subprojects {
     repositories {
         jcenter()
         maven { url "https://maven.google.com" }
+        flatDir {
+            dirs 'libs'
+        }
+        maven { url "https://dl.bintray.com/oktaappauth/okta-appauth" }
     }
 }
 
 ext {
-    versionNum = 1
-    versionName = "0.1.0"
+    versionNum = 2
+    versionName = "0.2.0"
     versionDate = new Date()
 
     // These properties should remain in sync with the values from the AppAuth SDK

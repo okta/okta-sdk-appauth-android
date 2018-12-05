@@ -50,13 +50,6 @@ public class LoginActivity extends AppCompatActivity {
 
         mOktaAppAuth = OktaAppAuth.getInstance(this);
 
-        if (mOktaAppAuth.isUserLoggedIn()) {
-            Log.i(TAG, "User is already authenticated, proceeding to token activity");
-            startActivity(new Intent(this, UserInfoActivity.class));
-            finish();
-            return;
-        }
-
         setContentView(R.layout.activity_login);
 
         findViewById(R.id.start_auth).setOnClickListener((View view) -> startAuth());
@@ -64,6 +57,11 @@ public class LoginActivity extends AppCompatActivity {
         ((EditText) findViewById(R.id.login_hint_value)).addTextChangedListener(
                 new LoginHintChangeHandler(mOktaAppAuth));
 
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
         if (getIntent().getBooleanExtra(EXTRA_FAILED, false)) {
             showSnackbar(getString(R.string.auth_canceled));
         }
@@ -74,7 +72,6 @@ public class LoginActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        mOktaAppAuth.dispose();
     }
 
     /**
@@ -91,7 +88,18 @@ public class LoginActivity extends AppCompatActivity {
                 new OktaAppAuth.OktaAuthListener() {
                     @Override
                     public void onSuccess() {
-                        runOnUiThread(() -> displayAuthOptions());
+                        runOnUiThread(() -> {
+                            if (mOktaAppAuth.isUserLoggedIn()) {
+                                Log.i(TAG, "User is already authenticated, proceeding " +
+                                        "to token activity");
+                                startActivity(new Intent(LoginActivity.this,
+                                        UserInfoActivity.class));
+                                finish();
+                            } else {
+                                Log.i(TAG, "Login activity setup finished");
+                                displayAuthOptions();
+                            }
+                        });
                     }
 
                     @Override

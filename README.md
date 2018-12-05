@@ -53,7 +53,8 @@ You can create an Okta developer account at [https://developer.okta.com/](https:
 | Setting              | Value                                               |
 | -------------------- | --------------------------------------------------- |
 | Application Name     | Native OpenId Connect App *(must be unique)*        |
-| Redirect URIs        | com.okta.example:/callback                          |
+| Login URI            | com.okta.example:/callback                          |
+| End Session URI      | com.okta.example:/logoutCallback                    |
 | Allowed grant types  | Authorization Code, Refresh Token *(recommended)*   |
 
 4. Click **Finish** to redirect back to the *General Settings* of your application.
@@ -72,6 +73,7 @@ the following contents:
 {
   "client_id": "{clientIdValue}",
   "redirect_uri": "{redirectUriValue}",
+  "end_session_redirect_uri": "{endSessionUriValue}",
   "scopes": [
     "openid",
     "profile",
@@ -262,6 +264,30 @@ mOktaAuth.refreshAccessToken(new OktaAuth.OktaAuthListener() {
 ### Token Management
 
 Tokens are securely stored in the private Shared Preferences.
+
+### End session
+
+In order to perform end session within user's current browser and perform logout
+you have to call `endSession()` whenever you ready
+
+```java
+// LoginActivity.java
+
+public class UserInfoActivity extends Activity {
+
+    private void endSession() {
+        Intent completionIntent = new Intent(this, LoginActivity.class);
+        Intent cancelIntent = new Intent(this, UserInfoActivity.class);
+        cancelIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+
+        mOktaAuth.endSession(
+                this,
+                PendingIntent.getActivity(this, 0, completionIntent, 0),
+                PendingIntent.getActivity(this, 0, cancelIntent, 0)
+        );
+    }
+}
+```
 
 ## License
 

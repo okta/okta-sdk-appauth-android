@@ -34,7 +34,9 @@ apply plugin: 'com.jfrog.bintray'
 apply plugin: "com.github.dcendents.android-maven"
 
 dependencies {
-    implementation "net.openid:appauth:${rootProject.appAuthVersion}"
+    //Build of forked version of AppAuth-Android with end session functionality
+    //will be removed when end session feature will be released
+    implementation "net.openid:appauth:0.8.0-okta@aar"
     implementation "androidx.browser:browser:${rootProject.browserVersion}"
     implementation "com.squareup.okio:okio:${rootProject.okioVersion}"
 

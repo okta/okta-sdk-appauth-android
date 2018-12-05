@@ -29,21 +29,19 @@ import androidx.annotation.WorkerThread;
 import net.openid.appauth.AppAuthConfiguration;
 import net.openid.appauth.AuthState;
 import net.openid.appauth.AuthorizationException;
+import net.openid.appauth.AuthorizationManagementResponse;
 import net.openid.appauth.AuthorizationResponse;
 import net.openid.appauth.AuthorizationService;
 import net.openid.appauth.ClientAuthentication;
 import net.openid.appauth.TokenResponse;
-import net.openid.appauth.connectivity.DefaultConnectionBuilder;
 import net.openid.appauth.internal.Logger;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-
 /**
- * The Activity which is used to get the tokens in the authorization code flow. After the user
- * authenticates in the browser, this activity will trade the authorization code for the token.
+ * This Activity is used to manage Authorization and end of session requests.
+ * It will trade the authorization code for the token and notify whether
+ * end of session have been performed correctly
  */
-public class TokenExchangeActivity extends Activity {
+public class OktaManagementActivity extends Activity {
 
     private static final String TAG = "OktaAuthTknExchngActvty";
 
@@ -54,7 +52,6 @@ public class TokenExchangeActivity extends Activity {
 
     private AuthorizationService mAuthService;
     private AuthStateManager mStateManager;
-    private ExecutorService mExecutor;
 
     @VisibleForTesting
     PendingIntent mCompleteIntent;
@@ -75,7 +72,7 @@ public class TokenExchangeActivity extends Activity {
             Context context,
             PendingIntent completeIntent,
             PendingIntent cancelIntent) {
-        Intent tokenExchangeIntent = new Intent(context, TokenExchangeActivity.class);
+        Intent tokenExchangeIntent = new Intent(context, OktaManagementActivity.class);
         tokenExchangeIntent.putExtra(KEY_COMPLETE_INTENT, completeIntent);
         tokenExchangeIntent.putExtra(KEY_CANCEL_INTENT, cancelIntent);
         return PendingIntent.getActivity(context, 0, tokenExchangeIntent, 0);
@@ -86,12 +83,10 @@ public class TokenExchangeActivity extends Activity {
         super.onCreate(savedInstanceState);
 
         mStateManager = AuthStateManager.getInstance(this);
-        mExecutor = Executors.newSingleThreadExecutor();
 
         mAuthService = new AuthorizationService(
                 this,
                 new AppAuthConfiguration.Builder()
-                        .setConnectionBuilder(DefaultConnectionBuilder.INSTANCE)
                         .build());
 
         if (savedInstanceState == null) {
@@ -104,26 +99,39 @@ public class TokenExchangeActivity extends Activity {
     @Override
     protected void onStart() {
         super.onStart();
-
-        if (mExecutor.isShutdown()) {
-            mExecutor = Executors.newSingleThreadExecutor();
-        }
-
         OAuthClientConfiguration config = OAuthClientConfiguration.getInstance(this);
         if (config.hasConfigurationChanged()) {
             signOut();
             return;
         }
+        // the stored AuthState is incomplete, so check if we are currently receiving the result of
+        // the authorization flow from the browser.
+        AuthorizationManagementResponse response =
+                AuthorizationManagementResponse.fromIntent(getIntent());
+        AuthorizationException ex = AuthorizationException.fromIntent(getIntent());
+
+        if (ex != null || response == null) {
+            Log.i(TAG, "Authorization flow failed: " + ex);
+            sendPendingIntent(mCancelIntent);
+        } else if (isLoginFlow(response)) {
+            runLoginFlow((AuthorizationResponse) response, ex);
+        } else {
+            OktaAppAuth.getInstance(this).clearSessionData();
+            sendPendingIntent(mCompleteIntent);
+        }
+
+    }
+
+    private boolean isLoginFlow(AuthorizationManagementResponse response) {
+        return response instanceof AuthorizationResponse;
+    }
+
+    private void runLoginFlow(AuthorizationResponse response, AuthorizationException ex) {
 
         if (mStateManager.getCurrent().isAuthorized()) {
             sendPendingIntent(mCompleteIntent);
             return;
         }
-
-        // the stored AuthState is incomplete, so check if we are currently receiving the result of
-        // the authorization flow from the browser.
-        AuthorizationResponse response = AuthorizationResponse.fromIntent(getIntent());
-        AuthorizationException ex = AuthorizationException.fromIntent(getIntent());
 
         if (response != null || ex != null) {
             mStateManager.updateAfterAuthorization(response, ex);
@@ -132,12 +140,6 @@ public class TokenExchangeActivity extends Activity {
         if (response != null && response.authorizationCode != null) {
             // authorization code exchange is required
             exchangeAuthorizationCode(response);
-        } else if (ex != null) {
-            Log.i(TAG, "Authorization flow failed: " + ex.getMessage());
-            sendPendingIntent(mCancelIntent);
-        } else {
-            Log.i(TAG, "No authorization state retained - reauthorization required");
-            sendPendingIntent(mCancelIntent);
         }
     }
 
@@ -157,7 +159,6 @@ public class TokenExchangeActivity extends Activity {
     protected void onDestroy() {
         super.onDestroy();
         mAuthService.dispose();
-        mExecutor.shutdownNow();
     }
 
     @MainThread
@@ -241,7 +242,7 @@ public class TokenExchangeActivity extends Activity {
         try {
             pendingIntent.send();
         } catch (PendingIntent.CanceledException e) {
-            Log.e(TAG, "Unable to send cancel intent", e);
+            Log.e(TAG, "Unable to send intent", e);
         }
         finish();
     }

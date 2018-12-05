@@ -82,6 +82,7 @@ public class OAuthClientConfiguration {
 
     private String mClientId;
     private Uri mRedirectUri;
+    private Uri mEndSessionRedirectUri;
     private Uri mDiscoveryUri;
     private Set<String> mScopes;
 
@@ -193,10 +194,13 @@ public class OAuthClientConfiguration {
             throws InvalidJsonDocumentException {
         JsonParser jsonParser = JsonParser.forJson(jsonObject);
 
+        //We can not take has code directly from JSONObject
+        //because JSONObject does not follow java has code contract
         mConfigHash = jsonObject.toString().hashCode();
 
         mClientId = jsonParser.getRequiredString("client_id");
         mRedirectUri = jsonParser.getRequiredUri("redirect_uri");
+        mEndSessionRedirectUri = jsonParser.getRequiredUri("end_session_redirect_uri");
 
         if (!isRedirectUriRegistered()) {
             throw new InvalidJsonDocumentException(
@@ -267,6 +271,16 @@ public class OAuthClientConfiguration {
      */
     public Uri getRedirectUri() {
         return mRedirectUri;
+    }
+
+    /**
+     * Returns the redirect uri to go to once the end session flow is complete.
+     * This will match the app's registered Uri
+     *
+     * @return The Uri to redirect to once the end session flow is complete
+     */
+    public Uri getmEndSessionRedirectUri() {
+        return mEndSessionRedirectUri;
     }
 
     /**

@@ -17,6 +17,7 @@ package com.okta.appauth.android;
 
 import android.app.PendingIntent;
 import android.content.Context;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
@@ -42,6 +43,7 @@ import net.openid.appauth.AuthorizationServiceConfiguration;
 import net.openid.appauth.AuthorizationServiceDiscovery;
 import net.openid.appauth.ClientAuthentication;
 import net.openid.appauth.ClientAuthentication.UnsupportedAuthenticationMethod;
+import net.openid.appauth.EndSessionRequest;
 import net.openid.appauth.ResponseTypeValues;
 import net.openid.appauth.TokenResponse;
 import net.openid.appauth.connectivity.DefaultConnectionBuilder;
@@ -55,9 +57,9 @@ import java.lang.ref.WeakReference;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.Charset;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -82,7 +84,6 @@ public class OktaAppAuth {
     protected final AtomicReference<String> mClientId = new AtomicReference<>();
     protected final AtomicReference<AuthorizationRequest> mAuthRequest = new AtomicReference<>();
     protected final AtomicReference<CustomTabsIntent> mAuthIntent = new AtomicReference<>();
-    protected CountDownLatch mAuthIntentLatch = new CountDownLatch(1);
 
     protected ExecutorService mExecutor;
 
@@ -127,9 +128,9 @@ public class OktaAppAuth {
      * will not customize the CustomTabs session. If you would like to customize the
      * CustomTabs session, use {@link #init(Context, OktaAuthListener, int)}
      *
-     * @param context The application context
+     * @param context  The application context
      * @param listener An OktaAuthSuccessListener that will be called once the initialization is
-     *     complete
+     *                 complete
      */
     @AnyThread
     public void init(
@@ -142,11 +143,11 @@ public class OktaAppAuth {
      * Initializes the OktaAppAuth object. This will fetch an OpenID Connect discovery document
      * from the issuer in the configuration to configure this instance for use.
      *
-     * @param context The application context
-     * @param listener An OktaAuthListener that will be called once the initialization is
-     *     complete
+     * @param context        The application context
+     * @param listener       An OktaAuthListener that will be called once the initialization is
+     *                       complete
      * @param customTabColor The color that will be passed to
-     *     {@link CustomTabsIntent.Builder#setToolbarColor(int)}
+     *                       {@link CustomTabsIntent.Builder#setToolbarColor(int)}
      */
     @AnyThread
     public void init(
@@ -166,9 +167,9 @@ public class OktaAppAuth {
      * Logs in a user and acquires authorization tokens for that user. Uses a login hint provided
      * by a {@link LoginHintChangeHandler} if available.
      *
-     * @param context The application context
+     * @param context          The application context
      * @param completionIntent The PendingIntent to direct the flow upon successful completion
-     * @param cancelIntent The PendingIntent to direct the flow upon cancellation or failure
+     * @param cancelIntent     The PendingIntent to direct the flow upon cancellation or failure
      */
     public void login(
             final Context context,
@@ -178,7 +179,7 @@ public class OktaAppAuth {
             @Override
             public void run() {
                 doAuth(
-                        TokenExchangeActivity.createStartIntent(
+                        OktaManagementActivity.createStartIntent(
                                 context.getApplicationContext(),
                                 completionIntent,
                                 cancelIntent),
@@ -188,10 +189,31 @@ public class OktaAppAuth {
     }
 
     /**
-     * Logs a user out. This method will discard a user's tokens and remove them from the
-     * device's storage.
+     * Ends session of the current user.
+     *
+     * @param context          The application context
+     * @param completionIntent The PendingIntent to direct the flow upon successful completion
+     * @param cancelIntent     The PendingIntent to direct the flow upon cancellation or failure
      */
-    public void logout() {
+    public void endSession(
+            final Context context,
+            final PendingIntent completionIntent,
+            final PendingIntent cancelIntent
+    ) {
+        mExecutor.submit(new Runnable() {
+            @Override
+            public void run() {
+                doEndSession(
+                        OktaManagementActivity.createStartIntent(
+                                context.getApplicationContext(),
+                                completionIntent,
+                                cancelIntent),
+                        cancelIntent);
+            }
+        });
+    }
+
+    void clearSessionData() {
         // discard the authorization and token state, but retain the configuration and
         // dynamic client registration (if applicable), to save from retrieving them again.
         AuthState currentState = mAuthStateManager.getCurrent();
@@ -220,7 +242,7 @@ public class OktaAppAuth {
      * configuration.
      *
      * @return {@code true} if a user is logged in and the configuration hasn't changed;
-     *     {@code false} otherwise
+     * {@code false} otherwise
      */
     @AnyThread
     public boolean isUserLoggedIn() {
@@ -286,7 +308,8 @@ public class OktaAppAuth {
                 new AuthorizationService.TokenResponseCallback() {
                     @Override
                     public void onTokenRequestCompleted(@Nullable TokenResponse tokenResponse,
-                            @Nullable AuthorizationException authException) {
+                                                        @Nullable AuthorizationException
+                                                                authException) {
                         handleAccessTokenResponse(
                                 tokenResponse,
                                 authException,
@@ -310,7 +333,7 @@ public class OktaAppAuth {
      * method on the callback in case of failure.
      *
      * @param callback An OktaAuthActionCallback providing the user info as a JSONObject on success
-     *     while calling one of the failure methods in case of a failure
+     *                 while calling one of the failure methods in case of a failure
      */
     public void getUserInfo(final OktaAuthActionCallback<JSONObject> callback) {
         performAuthorizedRequest(new BearerAuthRequest() {
@@ -375,7 +398,7 @@ public class OktaAppAuth {
      * interface, you provide the {@link HttpURLConnection} object and the access token will
      * automatically be added to the "Authorization" header with the standard OAuth 2.0 prefix of
      * "Bearer ". Tokens will be automatically refreshed if needed automatically.
-     *</p>
+     * </p>
      *
      * <p>
      * The following code is provided as an example for how you can leverage this method with
@@ -412,7 +435,7 @@ public class OktaAppAuth {
      * </pre>
      *
      * @param action An BearerAuthRequest detailing the action to take with success and failure
-     *     handlers
+     *               handlers
      */
     public void performAuthorizedRequest(final BearerAuthRequest action) {
         if (mAuthStateManager.getCurrent().getNeedsTokenRefresh() && !hasRefreshToken()) {
@@ -425,8 +448,8 @@ public class OktaAppAuth {
                 new AuthStateAction() {
                     @Override
                     public void execute(@Nullable String accessToken, @Nullable String idToken,
-                            @Nullable AuthorizationException ex) {
-                        doAuthorizedAction(accessToken, idToken, ex, action);
+                                        @Nullable AuthorizationException ex) {
+                        doAuthorizedAction(accessToken, ex, action);
                     }
                 });
     }
@@ -484,7 +507,6 @@ public class OktaAppAuth {
     @WorkerThread
     private void initializeAuthRequest() {
         createAuthRequest("");
-        warmUpBrowser();
         mInitializationListener.get().onSuccess();
     }
 
@@ -505,24 +527,17 @@ public class OktaAppAuth {
         mAuthRequest.set(authRequestBuilder.build());
     }
 
-    private void warmUpBrowser() {
-        mAuthIntentLatch = new CountDownLatch(1);
-        mExecutor.execute(new Runnable() {
-            @Override
-            public void run() {
-                Log.i(TAG, "Warming up browser instance for auth request");
-                CustomTabsIntent.Builder intentBuilder = createAuthorizationServiceIfNeeded()
-                        .createCustomTabsIntentBuilder(mAuthRequest.get().toUri());
-                intentBuilder.setToolbarColor(mCustomTabColor);
-                mAuthIntent.set(intentBuilder.build());
-                mAuthIntentLatch.countDown();
-            }
-        });
+    private void warmUpBrowser(Uri uri) {
+        Log.i(TAG, "Warming up browser instance for auth request");
+        CustomTabsIntent.Builder intentBuilder =
+                mAuthService.createCustomTabsIntentBuilder(uri);
+        intentBuilder.setToolbarColor(mCustomTabColor);
+        mAuthIntent.set(intentBuilder.build());
     }
 
     @MainThread
     private void handleConfigurationRetrievalResult(AuthorizationServiceConfiguration config,
-            AuthorizationException ex) {
+                                                    AuthorizationException ex) {
         if (config == null) {
             Log.e(TAG, "Failed to retrieve discovery document", ex);
             mInitializationListener.get().onTokenFailure(ex);
@@ -569,18 +584,33 @@ public class OktaAppAuth {
 
     @WorkerThread
     private void doAuth(PendingIntent completionIntent, PendingIntent cancelIntent) {
-        try {
-            mAuthIntentLatch.await();
-        } catch (InterruptedException ex) {
-            Log.w(TAG, "Interrupted while waiting for auth intent");
-        }
-
         Log.d(TAG, "Starting authorization flow");
+        AuthorizationRequest request = mAuthRequest.get();
+        warmUpBrowser(request.toUri());
         createAuthorizationServiceIfNeeded().performAuthorizationRequest(
-                mAuthRequest.get(),
+                request,
                 completionIntent,
                 cancelIntent,
                 mAuthIntent.get());
+    }
+
+    private void doEndSession(PendingIntent completionIntent, PendingIntent cancelIntent) {
+        Log.d(TAG, "Starting end session flow");
+
+        EndSessionRequest request = new EndSessionRequest(
+                mAuthStateManager.getCurrent().getAuthorizationServiceConfiguration(),
+                mAuthStateManager.getCurrent().getIdToken(),
+                mConfiguration.getmEndSessionRedirectUri());
+
+        warmUpBrowser(request.toUri());
+
+        CustomTabsIntent.Builder intentBuilder =
+                mAuthService.createCustomTabsIntentBuilder(request.toUri());
+        intentBuilder.setToolbarColor(mCustomTabColor);
+        CustomTabsIntent endSessionIntent = intentBuilder.build();
+
+        mAuthService.performEndOfSessionRequest(request, completionIntent,
+                cancelIntent, endSessionIntent);
     }
 
     @WorkerThread
@@ -599,7 +629,6 @@ public class OktaAppAuth {
 
     private void doAuthorizedAction(
             final String accessToken,
-            final String idToken,
             final AuthorizationException ex,
             final BearerAuthRequest action) {
         if (ex != null) {
@@ -686,8 +715,9 @@ public class OktaAppAuth {
          * Called when a failure occurs during the operation unrelated to the authorization flow.
          *
          * @param httpResponseCode The 4xx or 5xx HTTP response code received if the operation
-         *     involves an HTTP request; {@code -1} otherwise
-         * @param ex The exception that caused the failure if one occurred; {@code null} otherwise
+         *                         involves an HTTP request; {@code -1} otherwise
+         * @param ex               The exception that caused the failure if one occurred;
+         *                         {@code null} otherwise
          */
         void onFailure(int httpResponseCode, Exception ex);
     }
@@ -714,7 +744,7 @@ public class OktaAppAuth {
          *
          * @return The HttpURLConnection that represents the authorized request
          * @throws Exception Any exception can be thrown in which case
-         *     {@link #onFailure(int, Exception)} will be called automatically
+         *                   {@link #onFailure(int, Exception)} will be called automatically
          */
         @NonNull
         HttpURLConnection createRequest() throws Exception;
@@ -737,8 +767,9 @@ public class OktaAppAuth {
          * Called when a failure occurs during the action unrelated to the authorization flow.
          *
          * @param httpResponseCode The 4xx or 5xx HTTP response code received if the action
-         *     involves an HTTP request; {@code -1} otherwise
-         * @param ex The exception that caused the failure if one occurred; {@code null} otherwise
+         *                         involves an HTTP request; {@code -1} otherwise
+         * @param ex               The exception that caused the failure if one occurred;
+         *                         {@code null} otherwise
          */
         void onFailure(int httpResponseCode, Exception ex);
     }
@@ -770,7 +801,8 @@ public class OktaAppAuth {
         }
 
         @Override
-        public void beforeTextChanged(CharSequence cs, int start, int count, int after) {}
+        public void beforeTextChanged(CharSequence cs, int start, int count, int after) {
+        }
 
         @Override
         public void onTextChanged(CharSequence cs, int start, int before, int count) {
@@ -780,7 +812,8 @@ public class OktaAppAuth {
         }
 
         @Override
-        public void afterTextChanged(Editable ed) {}
+        public void afterTextChanged(Editable ed) {
+        }
     }
 
     /**
@@ -807,7 +840,6 @@ public class OktaAppAuth {
             }
 
             mOktaAppAuth.createAuthRequest(mLoginHint);
-            mOktaAppAuth.warmUpBrowser();
         }
 
         public void cancel() {

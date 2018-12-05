@@ -1,6 +1,7 @@
 {
   "client_id": "{your-client-id-here}",
   "redirect_uri": "{your-redirect-uri}",
+  "end_session_redirect_uri": "{your-redirect-uri}",
   "scopes": [
     "openid",
     "profile",

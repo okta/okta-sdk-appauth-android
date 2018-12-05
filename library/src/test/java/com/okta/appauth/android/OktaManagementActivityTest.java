@@ -22,7 +22,9 @@ import android.content.Intent;
 import android.os.Bundle;
 
 import net.openid.appauth.AuthState;
+import net.openid.appauth.AuthorizationResponse;
 import org.assertj.android.api.Assertions;
+import org.json.JSONException;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -35,14 +37,14 @@ import org.robolectric.RuntimeEnvironment;
 
 import static android.content.Context.MODE_PRIVATE;
 
-import static com.okta.appauth.android.TokenExchangeActivity.KEY_CANCEL_INTENT;
-import static com.okta.appauth.android.TokenExchangeActivity.KEY_COMPLETE_INTENT;
+import static com.okta.appauth.android.OktaManagementActivity.KEY_CANCEL_INTENT;
+import static com.okta.appauth.android.OktaManagementActivity.KEY_COMPLETE_INTENT;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
 
 @RunWith(RobolectricTestRunner.class)
-public class TokenExchangeActivityTest {
+public class OktaManagementActivityTest {
 
     @Mock PendingIntent mCompleteIntent;
     @Mock PendingIntent mCancelIntent;
@@ -63,17 +65,17 @@ public class TokenExchangeActivityTest {
 
     @Test
     public void testOnCreateShouldFinishWhenNoStatePassed() {
-        TokenExchangeActivity activity = Robolectric.buildActivity(
-                TokenExchangeActivity.class
+        OktaManagementActivity activity = Robolectric.buildActivity(
+                OktaManagementActivity.class
         ).create().get();
 
         assertThat(activity.isFinishing()).isTrue();
     }
 
     @Test
-    public void testOnCreateShouldExtractStateFromIntent() {
-        TokenExchangeActivity activity = Robolectric.buildActivity(
-                TokenExchangeActivity.class,
+    public void testOnCreateShouldExtractStateFromIntent() throws JSONException {
+        OktaManagementActivity activity = Robolectric.buildActivity(
+                OktaManagementActivity.class,
                 createStartIntent()
         ).create().get();
 
@@ -83,8 +85,8 @@ public class TokenExchangeActivityTest {
 
     @Test
     public void testOnCreateShouldExtractStateFromSavedInstanceState() {
-        TokenExchangeActivity activity = Robolectric.buildActivity(
-                TokenExchangeActivity.class
+        OktaManagementActivity activity = Robolectric.buildActivity(
+                OktaManagementActivity.class
         ).create(createStartBundle()).get();
 
         assertThat(activity.mCompleteIntent).isEqualTo(this.mCompleteIntent);
@@ -92,11 +94,11 @@ public class TokenExchangeActivityTest {
     }
 
     @Test
-    public void testOnSaveInstanceStateWritesToTheBundle() {
+    public void testOnSaveInstanceStateWritesToTheBundle() throws JSONException {
         Bundle bundle = new Bundle();
 
-        TokenExchangeActivity activity = Robolectric.buildActivity(
-                TokenExchangeActivity.class,
+        OktaManagementActivity activity = Robolectric.buildActivity(
+                OktaManagementActivity.class,
                 createStartIntent()
         ).create().saveInstanceState(bundle).get();
 
@@ -110,7 +112,7 @@ public class TokenExchangeActivityTest {
     }
 
     @Test
-    public void testOnStartShouldSignOutIfConfigurationHasChanged() throws CanceledException {
+    public void testOnStartShouldSignOutIfConfigurationHasChanged() throws CanceledException, JSONException {
         // Create new configuration to change the hash
         Context context = RuntimeEnvironment.application.getApplicationContext();
         new OAuthClientConfiguration(
@@ -121,15 +123,15 @@ public class TokenExchangeActivityTest {
 
         doNothing().when(mCancelIntent).send();
 
-        TokenExchangeActivity activity = Robolectric.buildActivity(
-                TokenExchangeActivity.class
+        OktaManagementActivity activity = Robolectric.buildActivity(
+                OktaManagementActivity.class
         ).newIntent(createStartIntent()).create().start().get();
 
         assertThat(activity.isFinishing()).isTrue();
     }
 
     @Test
-    public void testOnStartShouldCompleteIfStateIsAuthorized() throws CanceledException {
+    public void testOnStartShouldCompleteIfStateIsAuthorized() throws CanceledException, JSONException {
         Context context = RuntimeEnvironment.application.getApplicationContext();
         AuthStateManager stateManager = AuthStateManager.getInstance(context);
         stateManager.replace(mAuthState);
@@ -137,18 +139,19 @@ public class TokenExchangeActivityTest {
         when(mAuthState.isAuthorized()).thenReturn(true);
         doNothing().when(mCompleteIntent).send();
 
-        TokenExchangeActivity activity = Robolectric.buildActivity(
-                TokenExchangeActivity.class,
+        OktaManagementActivity activity = Robolectric.buildActivity(
+                OktaManagementActivity.class,
                 createStartIntent()
         ).create().start().get();
 
         assertThat(activity.isFinishing()).isTrue();
     }
 
-    private Intent createStartIntent() {
+    private Intent createStartIntent() throws JSONException {
         Intent tokenExchangeIntent = new Intent(
                 RuntimeEnvironment.application.getApplicationContext(),
-                TokenExchangeActivity.class);
+                OktaManagementActivity.class);
+        tokenExchangeIntent.putExtra(AuthorizationResponse.EXTRA_RESPONSE, ConfigurationStreams.VALID_AUTHORIZATION_RESPONSE);
         tokenExchangeIntent.putExtra(KEY_COMPLETE_INTENT, mCompleteIntent);
         tokenExchangeIntent.putExtra(KEY_CANCEL_INTENT, mCancelIntent);
 

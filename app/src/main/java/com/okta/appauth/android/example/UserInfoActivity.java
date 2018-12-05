@@ -15,6 +15,7 @@
 
 package com.okta.appauth.android.example;
 
+import android.app.PendingIntent;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
@@ -50,6 +51,7 @@ public class UserInfoActivity extends AppCompatActivity {
     private static final String TAG = "UserInfoActivity";
 
     private static final String KEY_USER_INFO = "userInfo";
+    private static final String EXTRA_FAILED = "failed";
 
     private OktaAppAuth mOktaAppAuth;
     private final AtomicReference<JSONObject> mUserInfoJson = new AtomicReference<>();
@@ -163,12 +165,18 @@ public class UserInfoActivity extends AppCompatActivity {
      */
     @MainThread
     private void signOut() {
-        mOktaAppAuth.logout();
+        displayLoading("Ending current session");
+        Intent completionIntent = new Intent(this, LoginActivity.class);
+        Intent cancelIntent = new Intent(this, UserInfoActivity.class);
+        cancelIntent.putExtra(EXTRA_FAILED, true);
+        cancelIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        completionIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK);
 
-        Intent mainIntent = new Intent(this, LoginActivity.class);
-        mainIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        startActivity(mainIntent);
-        finish();
+        mOktaAppAuth.endSession(this,
+                PendingIntent.getActivity(this, 0, completionIntent, 0),
+                PendingIntent.getActivity(this, 0, cancelIntent, 0)
+        );
+
     }
 
     @MainThread
@@ -187,17 +195,17 @@ public class UserInfoActivity extends AppCompatActivity {
         findViewById(R.id.authorized).setVisibility(View.VISIBLE);
         findViewById(R.id.loading_container).setVisibility(View.GONE);
 
-        TextView refreshTokenInfoView = (TextView) findViewById(R.id.refresh_token_info);
+        TextView refreshTokenInfoView = findViewById(R.id.refresh_token_info);
         refreshTokenInfoView.setText(!mOktaAppAuth.hasRefreshToken()
                 ? R.string.no_refresh_token_returned
                 : R.string.refresh_token_returned);
 
-        TextView idTokenInfoView = (TextView) findViewById(R.id.id_token_info);
+        TextView idTokenInfoView = findViewById(R.id.id_token_info);
         idTokenInfoView.setText(!mOktaAppAuth.hasIdToken()
                 ? R.string.no_id_token_returned
                 : R.string.id_token_returned);
 
-        TextView accessTokenInfoView = (TextView) findViewById(R.id.access_token_info);
+        TextView accessTokenInfoView = findViewById(R.id.access_token_info);
         if (!mOktaAppAuth.hasAccessToken()) {
             accessTokenInfoView.setText(R.string.no_access_token_returned);
         } else {
@@ -213,13 +221,13 @@ public class UserInfoActivity extends AppCompatActivity {
             }
         }
 
-        Button refreshTokenButton = (Button) findViewById(R.id.refresh_token);
+        Button refreshTokenButton = findViewById(R.id.refresh_token);
         refreshTokenButton.setVisibility(mOktaAppAuth.hasRefreshToken()
                 ? View.VISIBLE
                 : View.GONE);
         refreshTokenButton.setOnClickListener((View view) -> refreshAccessToken());
 
-        Button viewProfileButton = (Button) findViewById(R.id.view_profile);
+        Button viewProfileButton = findViewById(R.id.view_profile);
 
         viewProfileButton.setVisibility(View.VISIBLE);
         viewProfileButton.setOnClickListener((View view) -> fetchUserInfo());
