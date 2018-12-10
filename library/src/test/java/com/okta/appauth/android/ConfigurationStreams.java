@@ -45,6 +45,7 @@ public class ConfigurationStreams {
             "{" +
                     "  \"client_id\": \"other_client_id\"," +
                     "  \"redirect_uri\": \"com.okta.appauth.android.test:/oauth2redirect\"," +
+                    "  \"end_session_redirect_uri\": \"com.okta.appauth.android.test:/logout\"," +
                     "  \"scopes\": [" +
                     "    \"openid\"," +
                     "    \"bar\"" +
