@@ -61,13 +61,13 @@ public class UserInfoActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
 
         mOktaAppAuth = getInstance(this);
+        setContentView(R.layout.activity_user_info);
 
         if (!mOktaAppAuth.isUserLoggedIn()) {
             signOut();
-            return;
+            finish();
         }
 
-        setContentView(R.layout.activity_user_info);
         displayLoading(getString(R.string.loading_restoring));
 
         if (savedInstanceState != null) {

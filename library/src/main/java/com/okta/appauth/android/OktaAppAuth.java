@@ -174,6 +174,23 @@ public class OktaAppAuth {
             final Context context,
             final PendingIntent completionIntent,
             final PendingIntent cancelIntent) {
+        login(context, completionIntent, cancelIntent, null);
+    }
+
+    /**
+     * Logs in a user and acquires authorization tokens for that user. Uses a login hint provided
+     * within method
+     *
+     * @param context          The application context
+     * @param completionIntent The PendingIntent to direct the flow upon successful completion
+     * @param cancelIntent     The PendingIntent to direct the flow upon cancellation or failure
+     * @param loginHint        Login hint to be used within login flow
+     */
+    public void login(
+            final Context context,
+            final PendingIntent completionIntent,
+            final PendingIntent cancelIntent,
+            final String loginHint) {
         mExecutor.submit(new Runnable() {
             @Override
             public void run() {
@@ -182,7 +199,7 @@ public class OktaAppAuth {
                                 context.getApplicationContext(),
                                 completionIntent,
                                 cancelIntent),
-                        cancelIntent);
+                        cancelIntent, loginHint);
             }
         });
     }
@@ -587,8 +604,13 @@ public class OktaAppAuth {
     }
 
     @WorkerThread
-    private void doAuth(PendingIntent completionIntent, PendingIntent cancelIntent) {
+    private void doAuth(PendingIntent completionIntent,
+                        PendingIntent cancelIntent,
+                        @Nullable String loginHint) {
         Log.d(TAG, "Starting authorization flow");
+        if (loginHint != null) {
+            createAuthRequest(loginHint);
+        }
         AuthorizationRequest request = mAuthRequest.get();
         warmUpBrowser(request.toUri());
         createAuthorizationServiceIfNeeded().performAuthorizationRequest(
@@ -783,7 +805,10 @@ public class OktaAppAuth {
      * Use of this handler is optional. After a delay, this handler will warm up
      * the Custom Tabs browser used for authentication with the supplied login hint;
      * the delay avoids constantly re-initializing the browser while the user is typing.
+     * <p/>
+     * NOTE: Going to be deleted in v 1.0.0
      */
+    @Deprecated
     public static final class LoginHintChangeHandler implements TextWatcher {
 
         private static final int DEBOUNCE_DELAY_MS = 500;
@@ -825,6 +850,7 @@ public class OktaAppAuth {
      * for a request with the new login hint; this avoids constantly re-initializing the
      * browser while the user is typing.
      */
+    @Deprecated
     private static final class RecreateAuthRequestTask implements Runnable {
 
         private final AtomicBoolean mCanceled = new AtomicBoolean();
