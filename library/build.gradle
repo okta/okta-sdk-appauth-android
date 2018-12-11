@@ -5,6 +5,12 @@ apply from: "${rootDir}/gradle/android-common.gradle"
 group = "com.okta.android"
 version = "${rootProject.versionName}"
 
+task buildAppAuthLibrary(type: Exec) {
+    commandLine 'sh', "${rootDir.absolutePath}/assemble-appauth.sh",
+            "${rootDir.absolutePath}/app-auth/AppAuth-Android"
+}
+preBuild.dependsOn buildAppAuthLibrary
+
 android {
     defaultConfig {
         project.archivesBaseName = "appauth-android"
@@ -36,7 +42,10 @@ apply plugin: "com.github.dcendents.android-maven"
 dependencies {
     //Build of forked version of AppAuth-Android with end session functionality
     //will be removed when end session feature will be released
-    implementation "net.openid:appauth:0.8.0-okta@aar"
+    compile fileTree(
+            dir: rootProject.appAuthLocation ,
+            include: rootProject.appAuthName
+    )
     implementation "androidx.browser:browser:${rootProject.browserVersion}"
     implementation "com.squareup.okio:okio:${rootProject.okioVersion}"
 

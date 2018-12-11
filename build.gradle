@@ -54,6 +54,10 @@ ext {
     // Gradle plugin version
     checkstyleVersion = "8.1"
     saxonVersion = "8.7"
+
+    // AppAuth specification
+    appAuthLocation = "${rootDir.absolutePath}/app-auth/AppAuth-android/library/build/outputs/aar"
+    appAuthName = "appauth-release.aar"
 }
 
 task showVersion {

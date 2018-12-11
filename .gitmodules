@@ -1,0 +1,4 @@
+[submodule "app-auth/AppAuth-Android"]
+	path = app-auth/AppAuth-Android
+	url = git@github.com:okta/AppAuth-Android.git
+	branch = end_session_support

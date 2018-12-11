@@ -1,6 +1,7 @@
 apply plugin: "com.android.application"
 apply from: "${rootDir}/gradle/android-common.gradle"
 
+
 android {
     defaultConfig {
         applicationId "com.okta.appauth.android.example"
@@ -24,7 +25,10 @@ android {
 
 dependencies {
     implementation project(":library")
-    implementation "net.openid:appauth:0.8.0-okta@aar"
+    compile fileTree(
+            dir: rootProject.appAuthLocation,
+            include: rootProject.appAuthName
+    )
     implementation "androidx.appcompat:appcompat:${rootProject.appcompatVersion}"
     implementation "androidx.browser:browser:${rootProject.browserVersion}"
     implementation 'com.google.android.material:material:1.1.0-alpha01'
