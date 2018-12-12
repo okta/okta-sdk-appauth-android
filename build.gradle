@@ -56,7 +56,7 @@ ext {
     saxonVersion = "8.7"
 
     // AppAuth specification
-    appAuthLocation = "${rootDir.absolutePath}/app-auth/AppAuth-android/library/build/outputs/aar"
+    appAuthLocation = "libs"
     appAuthName = "appauth-release.aar"
 }
 

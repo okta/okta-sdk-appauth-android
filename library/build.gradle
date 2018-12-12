@@ -7,7 +7,8 @@ version = "${rootProject.versionName}"
 
 task buildAppAuthLibrary(type: Exec) {
     commandLine 'sh', "${rootDir.absolutePath}/assemble-appauth.sh",
-            "${rootDir.absolutePath}/app-auth/AppAuth-Android"
+            "${rootDir.absolutePath}/app-auth/AppAuth-Android",
+            "${rootDir.absolutePath}/library"
 }
 preBuild.dependsOn buildAppAuthLibrary
 

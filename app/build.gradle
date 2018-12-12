@@ -25,10 +25,10 @@ android {
 
 dependencies {
     implementation project(":library")
-    compile fileTree(
-            dir: rootProject.appAuthLocation,
-            include: rootProject.appAuthName
-    )
+//    compile fileTree(
+//            dir: rootProject.appAuthLocation,
+//            include: rootProject.appAuthName
+//    )
     implementation "androidx.appcompat:appcompat:${rootProject.appcompatVersion}"
     implementation "androidx.browser:browser:${rootProject.browserVersion}"
     implementation 'com.google.android.material:material:1.1.0-alpha01'

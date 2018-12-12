@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
 
 cd $1
-./gradlew assembleRelease
+
+if [[ ! -f $2libs/appauth-release.aar ]]; then
+    ./gradlew assembleRelease
+    mkdir $2/libs
+    cp $1/library/build/outputs/aar/appauth-release.aar $2/libs/appauth-release.aar
+fi
