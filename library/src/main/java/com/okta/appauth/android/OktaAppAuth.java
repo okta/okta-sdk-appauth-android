@@ -189,28 +189,32 @@ public class OktaAppAuth {
     }
 
     /**
-     * Ends session of the current user.
+     * Ends session of the current user within Okta.
      *
      * @param context          The application context
      * @param completionIntent The PendingIntent to direct the flow upon successful completion
      * @param cancelIntent     The PendingIntent to direct the flow upon cancellation or failure
      */
-    public void endSession(
+    public void signOutFromOkta(
             final Context context,
             final PendingIntent completionIntent,
             final PendingIntent cancelIntent
     ) {
-        mExecutor.submit(new Runnable() {
-            @Override
-            public void run() {
-                doEndSession(
-                        OktaManagementActivity.createStartIntent(
-                                context.getApplicationContext(),
-                                completionIntent,
-                                cancelIntent),
-                        cancelIntent);
-            }
-        });
+        if (isUserLoggedIn()) {
+            mExecutor.submit(new Runnable() {
+                @Override
+                public void run() {
+                    doEndSession(
+                            OktaManagementActivity.createStartIntent(
+                                    context.getApplicationContext(),
+                                    completionIntent,
+                                    cancelIntent),
+                            cancelIntent);
+                }
+            });
+        } else {
+            throw new IllegalStateException("No logged in user found");
+        }
     }
 
     void clearSessionData() {
@@ -247,7 +251,8 @@ public class OktaAppAuth {
     @AnyThread
     public boolean isUserLoggedIn() {
         return mAuthStateManager.getCurrent().isAuthorized() &&
-                !mConfiguration.hasConfigurationChanged();
+                !mConfiguration.hasConfigurationChanged() &&
+                mAuthStateManager.getCurrent().getAuthorizationServiceConfiguration() != null;
     }
 
     /**
@@ -600,7 +605,7 @@ public class OktaAppAuth {
         EndSessionRequest request = new EndSessionRequest(
                 mAuthStateManager.getCurrent().getAuthorizationServiceConfiguration(),
                 mAuthStateManager.getCurrent().getIdToken(),
-                mConfiguration.getmEndSessionRedirectUri());
+                mConfiguration.getEndSessionRedirectUri());
 
         warmUpBrowser(request.toUri());
 

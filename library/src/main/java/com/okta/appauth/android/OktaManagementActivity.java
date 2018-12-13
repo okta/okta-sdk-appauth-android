@@ -111,7 +111,7 @@ public class OktaManagementActivity extends Activity {
         AuthorizationException ex = AuthorizationException.fromIntent(getIntent());
 
         if (ex != null || response == null) {
-            Log.i(TAG, "Authorization flow failed: " + ex);
+            Log.w(TAG, "Authorization flow failed: " + ex);
             sendPendingIntent(mCancelIntent);
         } else if (isLoginFlow(response)) {
             runLoginFlow((AuthorizationResponse) response, ex);
@@ -233,7 +233,6 @@ public class OktaManagementActivity extends Activity {
             finish();
             return;
         }
-
         mCompleteIntent = state.getParcelable(KEY_COMPLETE_INTENT);
         mCancelIntent = state.getParcelable(KEY_CANCEL_INTENT);
     }

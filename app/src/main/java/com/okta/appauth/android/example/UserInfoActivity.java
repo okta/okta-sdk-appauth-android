@@ -172,7 +172,7 @@ public class UserInfoActivity extends AppCompatActivity {
         cancelIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
         completionIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK);
 
-        mOktaAppAuth.endSession(this,
+        mOktaAppAuth.signOutFromOkta(this,
                 PendingIntent.getActivity(this, 0, completionIntent, 0),
                 PendingIntent.getActivity(this, 0, cancelIntent, 0)
         );

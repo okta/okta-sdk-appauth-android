@@ -268,7 +268,7 @@ Tokens are securely stored in the private Shared Preferences.
 ### End session
 
 In order to perform end session within user's current browser and perform logout
-you have to call `endSession()` whenever you ready
+you have to call `endSession()` whenever you are ready
 
 ```java
 // LoginActivity.java

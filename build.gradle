@@ -20,7 +20,6 @@ subprojects {
         flatDir {
             dirs 'libs'
         }
-        maven { url "https://dl.bintray.com/oktaappauth/okta-appauth" }
     }
 }
 
@@ -57,7 +56,7 @@ ext {
 
     // AppAuth specification
     appAuthLocation = "libs"
-    appAuthName = "appauth-release.aar"
+    appAuthName = "okta-appauth-fork.aar"
 }
 
 task showVersion {

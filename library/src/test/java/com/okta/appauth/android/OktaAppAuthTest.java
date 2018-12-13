@@ -1,16 +1,17 @@
 package com.okta.appauth.android;
 
+import android.app.PendingIntent;
 import android.content.Context;
 
-import net.openid.appauth.AuthState;
-import net.openid.appauth.AuthorizationException;
-import net.openid.appauth.AuthorizationService;
-import net.openid.appauth.ClientAuthentication;
-import net.openid.appauth.TokenRequest;
+import android.net.Uri;
+import androidx.browser.customtabs.CustomTabsIntent;
+import com.okta.TestUtils;
+import net.openid.appauth.*;
 
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.robolectric.RobolectricTestRunner;
@@ -47,6 +48,7 @@ public class OktaAppAuthTest {
         sut.mAuthService = mAuthService;
         sut.mAuthStateManager = mAuthStateManager;
         sut.mConfiguration = mConfiguration;
+        sut.mExecutor = TestUtils.buildSyncynchronesExecutorService();
         when(mAuthStateManager.getCurrent()).thenReturn(mAuthState);
     }
 
@@ -113,6 +115,59 @@ public class OktaAppAuthTest {
         assertThat(listener.hasCalledOnTokenFailure()).isTrue();
         assertThat(listener.getTokenExceptions().get(0))
                 .isEqualTo(AuthorizationException.TokenRequestErrors.INVALID_REQUEST);
+    }
+
+    @Test
+    public void testSignOutFromOkta() {
+        PendingIntent success = mock(PendingIntent.class);
+        PendingIntent failure = mock(PendingIntent.class);
+        AuthState authState = mock(AuthState.class);
+        String idToken = TestUtils.getUnsignedIdToken();
+
+        when(mAuthService.createCustomTabsIntentBuilder(any(Uri.class)))
+                .thenReturn(new CustomTabsIntent.Builder());
+        when(mAuthStateManager.getCurrent()).thenReturn(authState);
+        when(authState.getAuthorizationServiceConfiguration())
+                .thenReturn(TestUtils.getTestServiceConfig());
+        when(authState.isAuthorized()).thenReturn(true);
+        when(authState.getIdToken()).thenReturn(idToken);
+        when(mConfiguration.getEndSessionRedirectUri())
+                .thenReturn(TestUtils.TEST_APP_REDIRECT_URI);
+        when(mConfiguration.hasConfigurationChanged()).thenReturn(false);
+
+        ArgumentCaptor<EndSessionRequest> argument = ArgumentCaptor.forClass(EndSessionRequest.class);
+
+        sut.signOutFromOkta(mContext, success, failure);
+
+        verify(mAuthService, times(1))
+                .performEndOfSessionRequest(
+                        argument.capture()
+                        ,any(PendingIntent.class)
+                        ,any(PendingIntent.class)
+                        ,any(CustomTabsIntent.class)
+                );
+
+        assertThat(argument.getValue().idToken)
+                .isEqualTo(idToken);
+        assertThat(argument.getValue().configuration.toJsonString())
+                .isEqualTo(TestUtils.getTestServiceConfig().toJsonString());
+        assertThat(argument.getValue().redirectUri)
+                .isEqualTo(TestUtils.TEST_APP_REDIRECT_URI);
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void testLogoutNoLogedinUserFoundException(){
+        PendingIntent success = mock(PendingIntent.class);
+        PendingIntent failure = mock(PendingIntent.class);
+        AuthState authState = mock(AuthState.class);
+
+        when(mAuthStateManager.getCurrent()).thenReturn(authState);
+        when(authState.isAuthorized()).thenReturn(false);
+        when(mConfiguration.hasConfigurationChanged()).thenReturn(false);
+        when(authState.getAuthorizationServiceConfiguration())
+                .thenReturn(TestUtils.getTestServiceConfig());
+
+        sut.signOutFromOkta(mContext, success, failure);
     }
 
     @Test
