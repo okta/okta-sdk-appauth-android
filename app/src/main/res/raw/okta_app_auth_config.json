@@ -1,5 +1,5 @@
 {
-  "client_id": "{clientId}",
+  "client_id": "{clientIdValue}",
   "redirect_uri": "{redirectUriValue}",
   "end_session_redirect_uri": "{endSessionUriValue}",
   "scopes": [
