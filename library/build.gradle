@@ -35,7 +35,6 @@ android {
             }
         }
     }
-
 }
 
 
@@ -58,7 +57,13 @@ dependencies {
     implementation project(":appauthlibrary")
     implementation "com.squareup.okio:okio:${rootProject.okioVersion}"
     implementation "com.android.support:customtabs:${rootProject.browserVersion}"
-
+    testImplementation "com.squareup.okhttp3:okhttp-tls:${rootProject.okhttpVersion}"
+    testImplementation "io.jsonwebtoken:jjwt-api:${rootProject.jsonWebTokenVersion}"
+    testImplementation "io.jsonwebtoken:jjwt-impl:${rootProject.jsonWebTokenVersion}"
+    testImplementation "io.jsonwebtoken:jjwt-jackson:${rootProject.jsonWebTokenVersion}"
+    testImplementation("io.jsonwebtoken:jjwt-orgjson:${rootProject.jsonWebTokenVersion}") {
+        exclude group: 'org.json', module: 'json'
+    }
     testImplementation "junit:junit:${rootProject.junitVersion}"
     testImplementation "org.mockito:mockito-core:${rootProject.mockitoVersion}"
     testImplementation "org.robolectric:robolectric:${rootProject.robolectricVersion}"

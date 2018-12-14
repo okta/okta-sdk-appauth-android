@@ -49,6 +49,7 @@ ext {
     robolectricVersion = "4.0.2"
     assertjVersion = "1.1.1"
     okhttpVersion = "3.12.0"
+    jsonWebTokenVersion = "0.10.5"
 
     // Gradle plugin version
     checkstyleVersion = "8.1"

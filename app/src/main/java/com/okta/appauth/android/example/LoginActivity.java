@@ -32,13 +32,13 @@ import android.widget.TextView;
 
 import com.okta.appauth.android.OktaAppAuth;
 import com.okta.appauth.android.OktaAppAuth.LoginHintChangeHandler;
+
 import net.openid.appauth.AuthorizationException;
 
 /**
  * Example Login Activity where authentication takes place.
  */
 public class LoginActivity extends AppCompatActivity {
-
     private static final String TAG = "LoginActivity";
     private static final String EXTRA_FAILED = "failed";
 

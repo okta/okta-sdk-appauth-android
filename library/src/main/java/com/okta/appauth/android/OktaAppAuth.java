@@ -32,7 +32,6 @@ import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.util.Log;
-
 import net.openid.appauth.AppAuthConfiguration;
 import net.openid.appauth.AuthState;
 import net.openid.appauth.AuthState.AuthStateAction;
@@ -291,6 +290,23 @@ public class OktaAppAuth {
                                 completionIntent,
                                 cancelIntent),
                         cancelIntent, payload);
+            }
+        });
+    }
+
+    /**
+     * Authenticate using Session Token.
+     *
+     * @param sessionToken     Session Token
+     * @param listener         The OktaAuthListener to receive callback with results
+     */
+    public void authenticate(
+            final String sessionToken,
+            @Nullable final OktaNativeAuthListener listener) {
+        mExecutor.submit(new Runnable() {
+            @Override
+            public void run() {
+                doAuth(sessionToken, listener);
             }
         });
     }
@@ -755,6 +771,19 @@ public class OktaAppAuth {
     }
 
     @WorkerThread
+    private void doAuth(String sessionToken, OktaNativeAuthListener listener) {
+        Log.d(TAG, "Starting native authorization flow");
+        SessionAuthenticationService
+                sessionAuthenticationService = new SessionAuthenticationService(
+                mAuthStateManager,
+                createAuthorizationServiceIfNeeded());
+        sessionAuthenticationService.performAuthorizationRequest(
+                mAuthRequest.get(),
+                sessionToken,
+                listener);
+    }
+
+    @WorkerThread
     private void doEndSession(PendingIntent completionIntent, PendingIntent cancelIntent) {
         Log.d(TAG, "Starting end session flow");
 
@@ -842,6 +871,23 @@ public class OktaAppAuth {
      */
     public interface OktaRevokeListener extends RevokeTokenRequest.RevokeListener {
 
+    }
+
+    /**
+     * Listener for OktaNativeAuth operations.
+     */
+    public interface OktaNativeAuthListener {
+        /**
+         * Called when the operation is successful to allow the caller to be notified.
+         */
+        void onSuccess();
+
+        /**
+         * Called when a failure occurs during the operation related to the authorization flow.
+         *
+         * @param ex The exception describing the failure
+         */
+        void onTokenFailure(@NonNull AuthenticationError ex);
     }
 
     /**
