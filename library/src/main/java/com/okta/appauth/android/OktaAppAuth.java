@@ -611,8 +611,8 @@ public class OktaAppAuth {
                 Log.e(TAG, "Configuration was invalid: " + mConfiguration.getConfigurationError());
                 listener.onTokenFailure(
                         AuthorizationException.GeneralErrors.INVALID_DISCOVERY_DOCUMENT);
-                return;
             }
+
             mConfiguration.acceptConfiguration();
         }
 
@@ -871,23 +871,6 @@ public class OktaAppAuth {
      */
     public interface OktaRevokeListener extends RevokeTokenRequest.RevokeListener {
 
-    }
-
-    /**
-     * Listener for OktaNativeAuth operations.
-     */
-    public interface OktaNativeAuthListener {
-        /**
-         * Called when the operation is successful to allow the caller to be notified.
-         */
-        void onSuccess();
-
-        /**
-         * Called when a failure occurs during the operation related to the authorization flow.
-         *
-         * @param ex The exception describing the failure
-         */
-        void onTokenFailure(@NonNull AuthenticationError ex);
     }
 
     /**

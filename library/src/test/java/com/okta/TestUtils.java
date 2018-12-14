@@ -91,15 +91,6 @@ public class TestUtils {
     }
 // >>>>>>> Added native login flow
 
-    private static String generateTokenResponseJson() {
-        return "{" +
-                "\"access_token\":\"eyJraWQiOiJHYjl2VDBSS0xPWjYyYmN6WVFJckJtY0FBYkVUcDJaVTdudWVCVFlsUkdVIiwiYWxnIjoiUlMyNTYifQ.eyJ2ZXIiOjEsImp0aSI6IkFULlY4UmdqQUhabWFXUzkxZEFORHpJNmFFdVVFeDNHYUpXTVdzXzExMlRPRjAiLCJpc3MiOiJodHRwczovL2xvaGlrYS11bS5va3RhcHJldmlldy5jb20vb2F1dGgyL2RlZmF1bHQiLCJhdWQiOiJhcGk6Ly9kZWZhdWx0IiwiaWF0IjoxNTQ1NDAwMDIxLCJleHAiOjE1NDU0ODY0MjEsImNpZCI6IjBvYWhuemhzZWd6WWpxRVRjMGg3IiwidWlkIjoiMDB1aHR3c3JyaUFDNXVpNDcwaDciLCJzY3AiOlsib3BlbmlkIiwicHJvZmlsZSJdLCJzdWIiOiJpbWFydHNla2hhQGxvaGlrYS5jb20ifQ.Bp-r0st5yyMFLKqoheh3mUTH_JhqubfBWXABWwApBoB_QqMB05EDskIBAhKfyc3KGMynoBK7fftP1KwNBhznYBQWUeueyXb5oHhKkPDYj8ds5Leu4758gLIDW2Ybj_eWspCR6aC1-eGWQZ-IbMz_rEpElmYC9TTXRPFngderPvqNW3dFU7VNJN-NFI18qEMRNf8-bIS8Qp9M1cU0WGKGi1wFDdgPM3761_R8beGMlWvulyA9B6mxZUs7M-ZxivJIdFbCKoFvxBo54ZBWXeMe-moEJA_tzXEuZf-Rq0mETwma-zBDCUWN3unZ51KRqEAtnZzGKDnt58on-olztbj1eA\"," +
-                "\"token_type\":\"Bearer\"," +
-                "\"expires_in\":86400," +
-                "\"scope\":\"openid profile\"," +
-                "\"id_token\":\"eyJraWQiOiJHYjl2VDBSS0xPWjYyYmN6WVFJckJtY0FBYkVUcDJaVTdudWVCVFlsUkdVIiwiYWxnIjoiUlMyNTYifQ.eyJzdWIiOiIwMHVodHdzcnJpQUM1dWk0NzBoNyIsIm5hbWUiOiJJaG9yIE1hcnRzZWtoYSIsInZlciI6MSwiaXNzIjoiaHR0cHM6Ly9sb2hpa2EtdW0ub2t0YXByZXZpZXcuY29tL29hdXRoMi9kZWZhdWx0IiwiYXVkIjoiMG9haG56aHNlZ3pZanFFVGMwaDciLCJpYXQiOjE1NDU0MDAwMjEsImV4cCI6MTU0NTQwMzYyMSwianRpIjoiSUQuVVdvSVZ1NVlCOXJCdzQ1MVhQS1NOYXdwWlpqNlQzY3IwaG9LUUlUa2VCWSIsImFtciI6WyJwd2QiXSwiaWRwIjoiMDBvM2V1Z3FxNG91bFVTeEowaDciLCJub25jZSI6IndIbDRTTUJua0lVRzZSRzd5REVrWHciLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJpbWFydHNla2hhQGxvaGlrYS5jb20iLCJhdXRoX3RpbWUiOjE1NDUzOTk5NzEsImF0X2hhc2giOiJPX0dHTm9TZnhSZTlucmRoZmFKdkNRIn0.JQBTltkijMyICl-UFWFgxM5av7xdsOec7m_t8lZ5bg3efb27RsYZPKJnSUX2g2um-CFsQfeoX22NGSvi1Wlx5OfoZLTkcgyzSxmS-ffxBen_zLDnNKAJtXZOMERDul_K3RANr8JhkmfQPgff6Qi8pCSr-5CceMbtXP5FTr7Jj14s4W8fgjgkauhw5-IKE8G8VfS_jq-omaxEwzqOU1uT-ZY5DX7vNMat5pRrbR01WFRzNnzH2lHhCTF2wPQtZly2RdBj5oGYRPMD5N7n5eCxTic3RVlA99ngI-uvhCxVynHeX2-SC1Nxyllz5GKrZCtcv0SQwrkbCQLWI7uw5WUF-g\"" +
-                "}";
-    }
 
     private static String toJson(List<String> strings) {
         return new JSONArray(strings).toString();
@@ -187,7 +178,6 @@ public class TestUtils {
     private static String base64UrlNoPaddingEncode(byte[] data) {
         return Base64.encodeToString(data, Base64.URL_SAFE | Base64.NO_PADDING | Base64.NO_WRAP);
     }
-
 
     public static AuthorizationRequest.Builder getMinimalAuthRequestBuilder(String responseType) {
         return new AuthorizationRequest.Builder(
