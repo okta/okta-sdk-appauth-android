@@ -15,15 +15,12 @@
 
 package com.okta.appauth.android.example;
 
-import android.annotation.TargetApi;
-import android.app.PendingIntent;
 import android.content.Intent;
-import android.os.Build;
 import android.os.Bundle;
-import android.support.annotation.ColorRes;
 import android.support.annotation.MainThread;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
@@ -31,17 +28,16 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.okta.appauth.android.AuthenticationError;
 import com.okta.appauth.android.OktaAppAuth;
-import com.okta.appauth.android.OktaAppAuth.LoginHintChangeHandler;
 
 import net.openid.appauth.AuthorizationException;
 
 /**
- * Example Login Activity where authentication takes place.
+ * Example Session Authorize Activity where authentication with session token takes place.
  */
-public class LoginActivity extends AppCompatActivity {
-    private static final String TAG = "LoginActivity";
-    private static final String EXTRA_FAILED = "failed";
+public class SessionAuthorizeActivity extends AppCompatActivity {
+    private static final String TAG = "SessionAuthActivity";
 
     private OktaAppAuth mOktaAppAuth;
 
@@ -53,12 +49,9 @@ public class LoginActivity extends AppCompatActivity {
 
         mOktaAppAuth = OktaAppAuth.getInstance(this);
 
-        setContentView(R.layout.activity_login);
+        setContentView(R.layout.activity_session_login);
 
         findViewById(R.id.start_auth).setOnClickListener((View view) -> startAuth());
-
-        ((EditText) findViewById(R.id.login_hint_value)).addTextChangedListener(
-                new LoginHintChangeHandler(mOktaAppAuth));
 
         mContainer = findViewById(R.id.auth_container);
     }
@@ -66,10 +59,6 @@ public class LoginActivity extends AppCompatActivity {
     @Override
     protected void onStart() {
         super.onStart();
-        if (getIntent().getBooleanExtra(EXTRA_FAILED, false)) {
-            showMessage(getString(R.string.auth_canceled));
-        }
-
         initializeOktaAuth();
     }
 
@@ -96,7 +85,7 @@ public class LoginActivity extends AppCompatActivity {
                             if (mOktaAppAuth.isUserLoggedIn()) {
                                 Log.i(TAG, "User is already authenticated, proceeding " +
                                         "to token activity");
-                                startActivity(new Intent(LoginActivity.this,
+                                startActivity(new Intent(SessionAuthorizeActivity.this,
                                         UserInfoActivity.class));
                                 finish();
                             } else {
@@ -112,57 +101,62 @@ public class LoginActivity extends AppCompatActivity {
                                 + ":"
                                 + ex.errorDescription));
                     }
-                },
-                getColorCompat(R.color.colorPrimary));
+                });
     }
 
     /**
      * Starts an authorization flow with the OktaAppAuth object. Make sure that the object is
      * initialized before this is called.
+     * To get valid sessionToken you need to use
+     * <a href="https://github.com/okta/okta-auth-java">okta-auth-java</a> library
      */
     @MainThread
     private void startAuth() {
         displayLoading(getString(R.string.loading_authorizing));
 
-        Intent completionIntent = new Intent(this, UserInfoActivity.class);
-        Intent cancelIntent = new Intent(this, LoginActivity.class);
-        cancelIntent.putExtra(EXTRA_FAILED, true);
-        cancelIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        String sessionToken = ((EditText)findViewById(R.id.session_token_value))
+                .getText().toString();
 
-        mOktaAppAuth.login(
-                this,
-                PendingIntent.getActivity(this, 0, completionIntent, 0),
-                PendingIntent.getActivity(this, 0, cancelIntent, 0)
-        );
+
+        if (TextUtils.isEmpty(sessionToken)) {
+            showMessage(getString(R.string.empty_login_or_password));
+            return;
+        }
+
+        mOktaAppAuth.authenticate(sessionToken, new OktaAppAuth.OktaNativeAuthListener() {
+            @Override
+            public void onSuccess() {
+                runOnUiThread(() -> {
+                    startActivity(new Intent(getBaseContext(), UserInfoActivity.class));
+                    finish();
+                });
+            }
+
+            @Override
+            public void onTokenFailure(@NonNull AuthenticationError ex) {
+                runOnUiThread(() -> {
+                    showMessage(ex.getMessage());
+                    displayAuthOptions();
+                });
+            }
+        });
     }
 
     @MainThread
     private void displayLoading(String loadingMessage) {
         findViewById(R.id.loading_container).setVisibility(View.VISIBLE);
         mContainer.setVisibility(View.GONE);
-
         ((TextView) findViewById(R.id.loading_description)).setText(loadingMessage);
     }
 
     @MainThread
     private void displayAuthOptions() {
         mContainer.setVisibility(View.VISIBLE);
-
         findViewById(R.id.loading_container).setVisibility(View.GONE);
     }
 
     @MainThread
     private void showMessage(String message) {
         Toast.makeText(this, message, Toast.LENGTH_LONG).show();
-    }
-
-    @TargetApi(Build.VERSION_CODES.M)
-    @SuppressWarnings("deprecation")
-    private int getColorCompat(@ColorRes int color) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            return getColor(color);
-        } else {
-            return getResources().getColor(color);
-        }
     }
 }

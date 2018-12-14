@@ -187,7 +187,7 @@ public class UserInfoActivity extends AppCompatActivity {
             @Override
             public void onSuccess() {
                 mOktaAppAuth.clearSession();
-                startActivity(new Intent(UserInfoActivity.this, LoginActivity.class));
+                startActivity(new Intent(UserInfoActivity.this, StartActivity.class));
                 finish();
             }
 
