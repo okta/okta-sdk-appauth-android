@@ -184,13 +184,19 @@ public class OktaAppAuth {
      * @param context          The application context
      * @param completionIntent The PendingIntent to direct the flow upon successful completion
      * @param cancelIntent     The PendingIntent to direct the flow upon cancellation or failure
-     * @param loginHint        Login hint to be used within login flow
+     * @param payload          Additional request payload that should be sent during authorization
      */
     public void login(
             final Context context,
             final PendingIntent completionIntent,
             final PendingIntent cancelIntent,
-            final String loginHint) {
+            final AuthPayload payload) {
+        if (mConfiguration.hasConfigurationChanged()) {
+            throw new IllegalStateException("Okta Configuration has changed");
+        }
+        if (mAuthStateManager.getCurrent().getAuthorizationServiceConfiguration() == null) {
+            throw new IllegalStateException("Okta should be initialized first");
+        }
         mExecutor.submit(new Runnable() {
             @Override
             public void run() {
@@ -199,7 +205,7 @@ public class OktaAppAuth {
                                 context.getApplicationContext(),
                                 completionIntent,
                                 cancelIntent),
-                        cancelIntent, loginHint);
+                        cancelIntent, payload);
             }
         });
     }
@@ -531,6 +537,27 @@ public class OktaAppAuth {
         mInitializationListener.get().onSuccess();
     }
 
+    private void createAuthRequest(@Nullable AuthPayload payload) {
+        AuthorizationRequest.Builder authRequestBuilder = new AuthorizationRequest.Builder(
+                mAuthStateManager.getCurrent().getAuthorizationServiceConfiguration(),
+                mClientId.get(),
+                ResponseTypeValues.CODE,
+                mConfiguration.getRedirectUri())
+                .setScopes(mConfiguration.getScopes());
+
+        if (payload != null) {
+            authRequestBuilder.setAdditionalParameters(payload.getAdditionalParameters());
+            if (!TextUtils.isEmpty(payload.toString())) {
+                authRequestBuilder.setState(payload.getState());
+            }
+            if (!TextUtils.isEmpty(payload.getLoginHint())) {
+                authRequestBuilder.setLoginHint(payload.getLoginHint());
+            }
+        }
+
+        mAuthRequest.set(authRequestBuilder.build());
+    }
+
     private void createAuthRequest(@Nullable String loginHint) {
         Log.i(TAG, "Creating auth request" +
                 (loginHint == null ? "" : ("for login hint: " + loginHint)));
@@ -606,10 +633,10 @@ public class OktaAppAuth {
     @WorkerThread
     private void doAuth(PendingIntent completionIntent,
                         PendingIntent cancelIntent,
-                        @Nullable String loginHint) {
+                        AuthPayload payload) {
         Log.d(TAG, "Starting authorization flow");
-        if (loginHint != null) {
-            createAuthRequest(loginHint);
+        if (payload != null) {
+            createAuthRequest(payload);
         }
         AuthorizationRequest request = mAuthRequest.get();
         warmUpBrowser(request.toUri());

@@ -26,7 +26,9 @@ public class TestUtils {
     public static final Uri TEST_APP_REDIRECT_URI = Uri.parse(TEST_APP_SCHEME + ":/oidc_callback");
 
     public static final String TEST_ISSUER = "https://test.issuer";
+    public static final List<String> TEST_SCOPES_SUPPORTED = Arrays.asList("openid", "profile");
 
+    public static final String TEST_CODE_VERIFIER = "0123456789_0123456789_0123456789_0123456789";
     static final String TEST_AUTHORIZATION_ENDPOINT = "http://test.openid.com/o/oauth/auth";
     static final String TEST_TOKEN_ENDPOINT = "http://test.openid.com/o/oauth/token";
     static final String TEST_USERINFO_ENDPOINT = "http://test.openid.com/o/oauth/userinfo";
@@ -36,7 +38,6 @@ public class TestUtils {
     static final List<String> TEST_RESPONSE_TYPES_SUPPORTED = Arrays.asList("code", "token");
     static final List<String> TEST_SUBJECT_TYPES_SUPPORTED = Arrays.asList("public");
     static final List<String> TEST_ID_TOKEN_SIGNING_ALG_VALUES = Arrays.asList("RS256");
-    static final List<String> TEST_SCOPES_SUPPORTED = Arrays.asList("openid", "profile");
     static final List<String> TEST_TOKEN_ENDPOINT_AUTH_METHODS
             = Arrays.asList("client_secret_post", "client_secret_basic");
     static final List<String> TEST_CLAIMS_SUPPORTED = Arrays.asList("aud", "exp");
@@ -138,5 +139,25 @@ public class TestUtils {
 
     private static String base64UrlNoPaddingEncode(byte[] data) {
         return Base64.encodeToString(data, Base64.URL_SAFE | Base64.NO_PADDING | Base64.NO_WRAP);
+    }
+
+    public static AuthorizationRequest.Builder getMinimalAuthRequestBuilder(String responseType) {
+        return new AuthorizationRequest.Builder(
+                getTestServiceConfig(),
+                TEST_CLIENT_ID,
+                responseType,
+                TEST_APP_REDIRECT_URI);
+    }
+
+    public static AuthorizationRequest.Builder getTestAuthRequestBuilder() {
+        return getMinimalAuthRequestBuilder(ResponseTypeValues.CODE)
+                .setScopes(AuthorizationRequest.Scope.OPENID, AuthorizationRequest.Scope.EMAIL)
+                .setCodeVerifier(TEST_CODE_VERIFIER);
+    }
+
+    public static AuthorizationRequest getTestAuthRequest() {
+        return getTestAuthRequestBuilder().
+                setNonce(null).
+                build();
     }
 }

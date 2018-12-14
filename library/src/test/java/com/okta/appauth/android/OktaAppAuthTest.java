@@ -7,12 +7,7 @@ import android.net.Uri;
 import android.support.customtabs.CustomTabsIntent;
 import com.okta.TestUtils;
 
-import net.openid.appauth.AuthState;
-import net.openid.appauth.AuthorizationException;
-import net.openid.appauth.AuthorizationService;
-import net.openid.appauth.ClientAuthentication;
-import net.openid.appauth.EndSessionRequest;
-import net.openid.appauth.TokenRequest;
+import net.openid.appauth.*;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -21,6 +16,8 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
+
+import java.util.HashSet;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -174,6 +171,97 @@ public class OktaAppAuthTest {
                 .thenReturn(TestUtils.getTestServiceConfig());
 
         sut.signOutFromOkta(mContext, success, failure);
+    }
+
+    @Test
+    public void testLoginWithoutPayloadSuccess() {
+        PendingIntent success = mock(PendingIntent.class);
+        PendingIntent failure = mock(PendingIntent.class);
+        AuthState authState = mock(AuthState.class);
+        AuthorizationRequest expectedRequest = TestUtils.getTestAuthRequest();
+
+        when(mAuthService.createCustomTabsIntentBuilder(any(Uri.class)))
+                .thenReturn(new CustomTabsIntent.Builder());
+        when(mAuthStateManager.getCurrent()).thenReturn(authState);
+        when(authState.getAuthorizationServiceConfiguration())
+                .thenReturn(TestUtils.getTestServiceConfig());
+        sut.mAuthRequest.set(TestUtils.getTestAuthRequest());
+
+        sut.login(mContext, success, failure);
+
+        ArgumentCaptor<AuthorizationRequest> argument = ArgumentCaptor.forClass(AuthorizationRequest.class);
+        verify(mAuthService, times(1))
+                .performAuthorizationRequest(
+                        argument.capture()
+                        ,any(PendingIntent.class)
+                        ,any(PendingIntent.class)
+                        ,any(CustomTabsIntent.class)
+                );
+
+        assertThat(expectedRequest.clientId)
+                .isEqualTo(argument.getValue().clientId);
+        assertThat(expectedRequest.configuration.toJsonString())
+                .isEqualTo(argument.getValue().configuration.toJsonString());
+    }
+
+    @Test
+    public void testLoginWithPayloadSuccess() {
+        PendingIntent success = mock(PendingIntent.class);
+        PendingIntent failure = mock(PendingIntent.class);
+        AuthState authState = mock(AuthState.class);
+
+        when(mAuthService.createCustomTabsIntentBuilder(any(Uri.class)))
+                .thenReturn(new CustomTabsIntent.Builder());
+        when(mAuthStateManager.getCurrent()).thenReturn(authState);
+        when(authState.getAuthorizationServiceConfiguration())
+                .thenReturn(TestUtils.getTestServiceConfig());
+        when(mConfiguration.getRedirectUri()).thenReturn(TestUtils.TEST_APP_REDIRECT_URI);
+        when(mConfiguration.getScopes()).thenReturn(new HashSet<>(TestUtils.TEST_SCOPES_SUPPORTED));
+        sut.mClientId.set(TestUtils.TEST_CLIENT_ID);
+
+        AuthPayload payload = new AuthPayload.Builder()
+                .addParameter("testName", "testValue")
+                .setSteate("testState")
+                .setmLoginHint("loginHint")
+                .build();
+
+        sut.login(mContext, success, failure, payload);
+
+        ArgumentCaptor<AuthorizationRequest> argument = ArgumentCaptor
+                .forClass(AuthorizationRequest.class);
+
+        verify(mAuthService, times(1))
+                .performAuthorizationRequest(
+                        argument.capture()
+                        ,any(PendingIntent.class)
+                        ,any(PendingIntent.class)
+                        ,any(CustomTabsIntent.class)
+                );
+
+        assertThat(argument.getValue().loginHint)
+                .isEqualTo(payload.getLoginHint());
+        assertThat(argument.getValue().additionalParameters)
+                .isEqualTo(payload.getAdditionalParameters());
+        assertThat(argument.getValue().state)
+                .isEqualTo(payload.getState());
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void testLoginIllegalStateExceptionConfigurationChanged(){
+        PendingIntent success = mock(PendingIntent.class);
+        PendingIntent failure = mock(PendingIntent.class);
+        when(mConfiguration.hasConfigurationChanged()).thenReturn(true);
+
+        sut.login(mContext, success, failure);
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void testLoginIllegalStateExceptionNoAuthorizationConfiguration(){
+        PendingIntent success = mock(PendingIntent.class);
+        PendingIntent failure = mock(PendingIntent.class);
+        when(mConfiguration.hasConfigurationChanged()).thenReturn(true);
+
+        sut.login(mContext, success, failure);
     }
 
     @Test
