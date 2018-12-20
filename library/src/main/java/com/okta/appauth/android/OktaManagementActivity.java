@@ -20,11 +20,11 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+import android.support.annotation.MainThread;
+import android.support.annotation.Nullable;
+import android.support.annotation.VisibleForTesting;
+import android.support.annotation.WorkerThread;
 import android.util.Log;
-import androidx.annotation.MainThread;
-import androidx.annotation.Nullable;
-import androidx.annotation.VisibleForTesting;
-import androidx.annotation.WorkerThread;
 
 import net.openid.appauth.AppAuthConfiguration;
 import net.openid.appauth.AuthState;

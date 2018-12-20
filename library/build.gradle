@@ -5,25 +5,29 @@ apply from: "${rootDir}/gradle/android-common.gradle"
 group = "com.okta.android"
 version = "${rootProject.versionName}"
 
-task buildAppAuthLibrary(type: Exec) {
-    commandLine 'sh', "${rootDir.absolutePath}/assemble-appauth.sh",
-            "${rootDir.absolutePath}/app-auth/AppAuth-Android",
-            "${rootDir.absolutePath}/library"
-}
-preBuild.dependsOn buildAppAuthLibrary
-
 android {
+
     defaultConfig {
         project.archivesBaseName = "appauth-android"
         manifestPlaceholders = [
                 "appAuthRedirectScheme": "com.okta.appauth.android.test"
         ]
     }
+
     testOptions {
         unitTests {
             includeAndroidResources = true
         }
     }
+    sourceSets {
+        main {
+            java {
+                srcDir "src/main/java"
+                srcDir "${rootDir.absolutePath}/app-auth/AppAuth-Android/library/java"
+            }
+        }
+    }
+
 }
 
 
@@ -41,14 +45,8 @@ apply plugin: 'com.jfrog.bintray'
 apply plugin: "com.github.dcendents.android-maven"
 
 dependencies {
-    //Build of forked version of AppAuth-Android with end session functionality
-    //will be removed when end session feature will be released
-    compile fileTree(
-            dir: rootProject.appAuthLocation ,
-            include: rootProject.appAuthName
-    )
-    implementation "androidx.browser:browser:${rootProject.browserVersion}"
     implementation "com.squareup.okio:okio:${rootProject.okioVersion}"
+    implementation "com.android.support:customtabs:${rootProject.browserVersion}"
 
     testImplementation "junit:junit:${rootProject.junitVersion}"
     testImplementation "org.mockito:mockito-core:${rootProject.mockitoVersion}"

@@ -4,10 +4,15 @@ import android.app.PendingIntent;
 import android.content.Context;
 
 import android.net.Uri;
-import androidx.browser.customtabs.CustomTabsIntent;
+import android.support.customtabs.CustomTabsIntent;
 import com.okta.TestUtils;
-import net.openid.appauth.*;
 
+import net.openid.appauth.AuthState;
+import net.openid.appauth.AuthorizationException;
+import net.openid.appauth.AuthorizationService;
+import net.openid.appauth.ClientAuthentication;
+import net.openid.appauth.EndSessionRequest;
+import net.openid.appauth.TokenRequest;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -27,6 +32,7 @@ import static org.mockito.Mockito.when;
 @RunWith(RobolectricTestRunner.class)
 public class OktaAppAuthTest {
     private static final String TAG = "OktaAppAuth";
+
     @Mock
     AuthorizationService mAuthService;
     @Mock

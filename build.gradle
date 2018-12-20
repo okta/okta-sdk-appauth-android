@@ -32,8 +32,8 @@ ext {
     minSdkVersion = 16
     compileSdkVersion = 28
     buildToolsVersion = "28.0.3"
-    browserVersion = "1.0.0"
-    appcompatVersion = "1.0.2"
+    browserVersion = "27.1.1"
+    appcompatVersion = "27.1.1"
     // SDK dependency versions
     appAuthVersion = "0.7.1"
     okioVersion = "1.13.0"
