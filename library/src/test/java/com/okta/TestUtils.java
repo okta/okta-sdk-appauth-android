@@ -156,8 +156,8 @@ public class TestUtils {
     }
 
     public static AuthorizationRequest getTestAuthRequest() {
-        return getTestAuthRequestBuilder().
-                setNonce(null).
-                build();
+        return getTestAuthRequestBuilder()
+                .setNonce(null)
+                .build();
     }
 }

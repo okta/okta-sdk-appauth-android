@@ -26,20 +26,22 @@ import java.util.Map;
  * for Authorization request or alter default parameters values (like mState).
  *
  */
-public class AuthPayload {
+public class AuthenticationPayload {
 
     private String mState;
     private String mLoginHint;
     private Map<String, String> mAdditionalParameters;
 
-    private AuthPayload(String state, String loginHint, Map<String, String> additionalParameters) {
+    private AuthenticationPayload(String state,
+                                  String loginHint,
+                                  Map<String, String> additionalParameters) {
         this.mState = state;
         this.mLoginHint = loginHint;
         this.mAdditionalParameters = additionalParameters;
     }
 
     /**
-     * Creates instances of {@link AuthPayload}.
+     * Creates instances of {@link AuthenticationPayload}.
      */
     public static class Builder {
 
@@ -67,7 +69,7 @@ public class AuthPayload {
          * @see "The OAuth 2.0 Authorization Framework (RFC 6749), Section 5.3.5
          * <https://tools.ietf.org/html/rfc6749#section-5.3.5>"
          */
-        public Builder setSteate(String state) {
+        public Builder setState(String state) {
             this.mState = state;
             return this;
         }
@@ -81,7 +83,7 @@ public class AuthPayload {
          * @see "OpenID Connect Core 1.0, Section 3.1.2.1
          * <https://openid.net/specs/openid-connect-core-1_0.html#rfc.section.3.1.2.1>"
          */
-        public Builder setmLoginHint(String loginHint) {
+        public Builder setLoginHint(String loginHint) {
             this.mLoginHint = loginHint;
             return this;
         }
@@ -103,12 +105,12 @@ public class AuthPayload {
         }
 
         /**
-         * Constructs a new instance of {@link AuthPayload}.
+         * Constructs a new instance of {@link AuthenticationPayload}.
          *
          * @return constructed authentication payload
          */
-        public AuthPayload build() {
-            return new AuthPayload(mState, mLoginHint, mAdditionalParameters);
+        public AuthenticationPayload build() {
+            return new AuthenticationPayload(mState, mLoginHint, mAdditionalParameters);
         }
 
     }

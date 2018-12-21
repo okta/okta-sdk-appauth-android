@@ -275,14 +275,14 @@ Tokens are securely stored in the private Shared Preferences.
 ### End session
 
 In order to perform end session within user's current browser and perform logout
-you have to call `endSession()` whenever you are ready
+you have to call `signOutFromOkta()` whenever you are ready
 
 ```java
 // LoginActivity.java
 
 public class UserInfoActivity extends Activity {
 
-    private void endSession() {
+    private void signOutFromOkta() {
         Intent completionIntent = new Intent(this, LoginActivity.class);
         Intent cancelIntent = new Intent(this, UserInfoActivity.class);
         cancelIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);

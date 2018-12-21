@@ -190,7 +190,7 @@ public class OktaAppAuth {
             final Context context,
             final PendingIntent completionIntent,
             final PendingIntent cancelIntent,
-            final AuthPayload payload) {
+            final AuthenticationPayload payload) {
         if (mConfiguration.hasConfigurationChanged()) {
             throw new IllegalStateException("Okta Configuration has changed");
         }
@@ -537,7 +537,7 @@ public class OktaAppAuth {
         mInitializationListener.get().onSuccess();
     }
 
-    private void createAuthRequest(@Nullable AuthPayload payload) {
+    private void createAuthRequest(@Nullable AuthenticationPayload payload) {
         AuthorizationRequest.Builder authRequestBuilder = new AuthorizationRequest.Builder(
                 mAuthStateManager.getCurrent().getAuthorizationServiceConfiguration(),
                 mClientId.get(),
@@ -633,7 +633,7 @@ public class OktaAppAuth {
     @WorkerThread
     private void doAuth(PendingIntent completionIntent,
                         PendingIntent cancelIntent,
-                        AuthPayload payload) {
+                        AuthenticationPayload payload) {
         Log.d(TAG, "Starting authorization flow");
         if (payload != null) {
             createAuthRequest(payload);
@@ -876,6 +876,7 @@ public class OktaAppAuth {
      * Responds to changes in the login hint. After a "debounce" delay, warms up the browser
      * for a request with the new login hint; this avoids constantly re-initializing the
      * browser while the user is typing.
+     * @deprecated As of version 0.3.0, will be removed as a part of version 1.0.0
      */
     @Deprecated
     private static final class RecreateAuthRequestTask implements Runnable {

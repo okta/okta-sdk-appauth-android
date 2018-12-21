@@ -20,6 +20,7 @@ import org.robolectric.RuntimeEnvironment;
 import java.util.HashSet;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -219,10 +220,10 @@ public class OktaAppAuthTest {
         when(mConfiguration.getScopes()).thenReturn(new HashSet<>(TestUtils.TEST_SCOPES_SUPPORTED));
         sut.mClientId.set(TestUtils.TEST_CLIENT_ID);
 
-        AuthPayload payload = new AuthPayload.Builder()
+        AuthenticationPayload payload = new AuthenticationPayload.Builder()
                 .addParameter("testName", "testValue")
-                .setSteate("testState")
-                .setmLoginHint("loginHint")
+                .setState("testState")
+                .setLoginHint("loginHint")
                 .build();
 
         sut.login(mContext, success, failure, payload);
@@ -246,22 +247,35 @@ public class OktaAppAuthTest {
                 .isEqualTo(payload.getState());
     }
 
-    @Test(expected = IllegalStateException.class)
+    @Test
     public void testLoginIllegalStateExceptionConfigurationChanged(){
         PendingIntent success = mock(PendingIntent.class);
         PendingIntent failure = mock(PendingIntent.class);
         when(mConfiguration.hasConfigurationChanged()).thenReturn(true);
 
-        sut.login(mContext, success, failure);
+        try {
+            sut.login(mContext, success, failure);
+        } catch (IllegalStateException ex) {
+            assertThat(ex).isInstanceOf(IllegalStateException.class);
+            assertThat(ex.getMessage()).contains("Okta Configuration has changed");
+            return;
+        }
+        fail("Expected exception not thrown");
     }
 
-    @Test(expected = IllegalStateException.class)
+    @Test
     public void testLoginIllegalStateExceptionNoAuthorizationConfiguration(){
         PendingIntent success = mock(PendingIntent.class);
         PendingIntent failure = mock(PendingIntent.class);
         when(mConfiguration.hasConfigurationChanged()).thenReturn(true);
-
-        sut.login(mContext, success, failure);
+        try {
+            sut.login(mContext, success, failure);
+        } catch (IllegalStateException ex) {
+            assertThat(ex).isInstanceOf(IllegalStateException.class);
+            assertThat(ex.getMessage()).contains("Okta Configuration has changed");
+            return;
+        }
+        fail("Expected exception not thrown");
     }
 
     @Test
