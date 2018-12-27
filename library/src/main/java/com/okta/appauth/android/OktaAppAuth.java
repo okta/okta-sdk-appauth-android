@@ -163,6 +163,40 @@ public class OktaAppAuth {
     }
 
     /**
+     * Performs revocation of acessToken or refreshToken.
+     *
+     * @param token accessToken or refreshToken {@link OktaAppAuth#getTokens()}
+     * @param listener revocation callback {@link OktaRevokeListener}
+     */
+    public void revoke(final String token, @NonNull final OktaRevokeListener listener) {
+        if (mConfiguration.hasConfigurationChanged()) {
+            throw new IllegalStateException("Okta Configuration has changed");
+        }
+        if (mAuthStateManager.getCurrent().getAuthorizationServiceConfiguration() == null) {
+            throw new IllegalStateException("Okta should be initialized first");
+        }
+        mExecutor.submit(new Runnable() {
+            @Override
+            public void run() {
+                doRevoke(token, listener);
+            }
+        });
+    }
+
+    private void doRevoke(String token,@NonNull RevokeTokenRequest.RevokeListener listener) {
+        RevokeTokenRequest request =
+                new RevokeTokenRequest.Builder(
+                        mAuthStateManager.getCurrent()
+                                .getAuthorizationServiceConfiguration()
+                                .discoveryDoc.docJson)
+                        .addClientId(mClientId.get())
+                        .addToken(token)
+                        .build();
+
+        request.performRequest(listener);
+    }
+
+    /**
      * Logs in a user and acquires authorization tokens for that user. Uses a login hint provided
      * by a {@link LoginHintChangeHandler} if available.
      *
@@ -222,24 +256,29 @@ public class OktaAppAuth {
             final PendingIntent completionIntent,
             final PendingIntent cancelIntent
     ) {
-        if (isUserLoggedIn()) {
-            mExecutor.submit(new Runnable() {
-                @Override
-                public void run() {
-                    doEndSession(
-                            OktaManagementActivity.createStartIntent(
-                                    context.getApplicationContext(),
-                                    completionIntent,
-                                    cancelIntent),
-                            cancelIntent);
-                }
-            });
-        } else {
+        if (!isUserLoggedIn()) {
             throw new IllegalStateException("No logged in user found");
         }
+        mExecutor.submit(new Runnable() {
+            @Override
+            public void run() {
+                doEndSession(
+                        OktaManagementActivity.createStartIntent(
+                                context.getApplicationContext(),
+                                completionIntent,
+                                cancelIntent),
+                        cancelIntent);
+            }
+        });
+
     }
 
-    void clearSessionData() {
+    /**
+     * Removes all stored information opn current session like
+     * Tokens and Authentication Server config.
+     * NOTE: After removal {@link OktaAppAuth#init} should be called.
+     */
+    public void clearSessionData() {
         // discard the authorization and token state, but retain the configuration and
         // dynamic client registration (if applicable), to save from retrieving them again.
         AuthState currentState = mAuthStateManager.getCurrent();
@@ -481,6 +520,15 @@ public class OktaAppAuth {
                 });
     }
 
+    /**
+     * provides tokens for current logged in user.
+     *
+     * @return tokens {@link Tokens}
+     */
+    public Tokens getTokens() {
+        return Tokens.fromAuthState(mAuthStateManager.getCurrent());
+    }
+
     @WorkerThread
     private void doInit(final Context context, final OktaAuthListener listener) {
         mInitializationListener.set(listener);
@@ -495,8 +543,10 @@ public class OktaAppAuth {
                 listener.onTokenFailure(
                         AuthorizationException.GeneralErrors.INVALID_DISCOVERY_DOCUMENT);
             }
+
             mConfiguration.acceptConfiguration();
         }
+
 
         if (mAuthStateManager.getCurrent().getAuthorizationServiceConfiguration() != null) {
             // configuration is already created, skip to client initialization
@@ -614,6 +664,7 @@ public class OktaAppAuth {
 
     /**
      * Handles recreating the authorization service if it has been cleared out.
+     *
      * @return a usable instance of {@see AuthorizationService}
      */
     AuthorizationService createAuthorizationServiceIfNeeded() {
@@ -725,6 +776,13 @@ public class OktaAppAuth {
                 action.onSuccess(response);
             }
         });
+    }
+
+    /**
+     * Listener for token revocation.
+     */
+    public interface OktaRevokeListener extends RevokeTokenRequest.RevokeListener {
+
     }
 
     /**

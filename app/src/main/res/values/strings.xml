@@ -23,6 +23,7 @@
     <string name="auth_options">Authorization options:</string>
     <string name="start_authorization">Start authorization</string>
     <string name="sign_out">Sign out</string>
+    <string name="revoke_token">Clear data</string>
     <string name="no_access_token_expiry">Access time has no defined expiry</string>
     <string name="access_token_expired">Access token has expired</string>
     <string name="user_info_loading">Fetching user info</string>

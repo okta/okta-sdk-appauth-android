@@ -9,9 +9,6 @@ android {
 
     defaultConfig {
         project.archivesBaseName = "appauth-android"
-        manifestPlaceholders = [
-                "appAuthRedirectScheme": "com.okta.appauth.android.test"
-        ]
     }
 
     testOptions {
@@ -19,11 +16,22 @@ android {
             includeAndroidResources = true
         }
     }
+
     sourceSets {
         main {
             java {
                 srcDir "src/main/java"
                 srcDir "${rootDir.absolutePath}/app-auth/AppAuth-Android/library/java"
+            }
+        }
+        test {
+            manifest {
+                srcFile "${rootDir.absolutePath}/library/src/test/AndroidManifest.xml"
+            }
+        }
+        androidTest {
+            manifest {
+                srcFile "${rootDir.absolutePath}/library/src/test/AndroidManifest.xml"
             }
         }
     }
@@ -45,6 +53,7 @@ apply plugin: 'com.jfrog.bintray'
 apply plugin: "com.github.dcendents.android-maven"
 
 dependencies {
+    implementation project(":appauthlibrary")
     implementation "com.squareup.okio:okio:${rootProject.okioVersion}"
     implementation "com.android.support:customtabs:${rootProject.browserVersion}"
 
@@ -52,6 +61,8 @@ dependencies {
     testImplementation "org.mockito:mockito-core:${rootProject.mockitoVersion}"
     testImplementation "org.robolectric:robolectric:${rootProject.robolectricVersion}"
     testImplementation "com.squareup.assertj:assertj-android:${rootProject.assertjVersion}"
+    testImplementation "com.squareup.okhttp3:mockwebserver:${rootProject.okhttpVersion}"
+    testImplementation "com.squareup.okhttp3:okhttp:${rootProject.okhttpVersion}"
 }
 
 apply from: "${rootDir}/gradle/style.gradle"

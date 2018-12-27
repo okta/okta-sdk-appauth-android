@@ -5,9 +5,16 @@ import android.content.Context;
 
 import android.net.Uri;
 import android.support.customtabs.CustomTabsIntent;
+import com.okta.ReflectionUtils;
 import com.okta.TestUtils;
 
 import net.openid.appauth.*;
+import okhttp3.mockwebserver.Dispatcher;
+import okhttp3.mockwebserver.MockResponse;
+import okhttp3.mockwebserver.MockWebServer;
+import okhttp3.mockwebserver.RecordedRequest;
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -18,9 +25,12 @@ import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
 
 import java.util.HashSet;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -267,12 +277,15 @@ public class OktaAppAuthTest {
     public void testLoginIllegalStateExceptionNoAuthorizationConfiguration(){
         PendingIntent success = mock(PendingIntent.class);
         PendingIntent failure = mock(PendingIntent.class);
-        when(mConfiguration.hasConfigurationChanged()).thenReturn(true);
+        AuthState mockedState = mock(AuthState.class);
+        when(mAuthStateManager.getCurrent()).thenReturn(mockedState);
+        when(mockedState.getAuthorizationServiceConfiguration()).thenReturn(null);
+
         try {
             sut.login(mContext, success, failure);
         } catch (IllegalStateException ex) {
             assertThat(ex).isInstanceOf(IllegalStateException.class);
-            assertThat(ex.getMessage()).contains("Okta Configuration has changed");
+            assertThat(ex.getMessage()).contains("Okta should be initialized first");
             return;
         }
         fail("Expected exception not thrown");
@@ -291,5 +304,126 @@ public class OktaAppAuthTest {
                         any(TokenRequest.class),
                         any(ClientAuthentication.class),
                         any(AuthorizationService.TokenResponseCallback.class));
+    }
+
+    @Test
+    public void testGetTokenSuccess() {
+        String testIdToken = "testIdToken";
+        String testAccessToken = "testAccessToken";
+        String testRefreshToken = "testRefreshToken";
+        when(mAuthStateManager.getCurrent()).thenReturn(mAuthState);
+        when(mAuthState.getIdToken()).thenReturn(testIdToken);
+        when(mAuthState.getRefreshToken()).thenReturn(testRefreshToken);
+        when(mAuthState.getAccessToken()).thenReturn(testAccessToken);
+        Tokens tokens = sut.getTokens();
+
+        assertThat(tokens.getAccessToken()).isEqualTo(testAccessToken);
+        assertThat(tokens.getIdToken()).isEqualTo(testIdToken);
+        assertThat(tokens.getRefreshToken()).isEqualTo(testRefreshToken);
+    }
+
+    @Test
+    public void testTokenRevocationSuccess() throws JSONException, InterruptedException {
+        final String testAccessToken = "testAccesToken";
+        final String  testClientId = "clientId";
+        AuthorizationServiceDiscovery discoveryMoc = mock(AuthorizationServiceDiscovery.class);
+        AuthorizationServiceConfiguration configurationMoc = mock(AuthorizationServiceConfiguration.class);
+
+        MockWebServer mockWebServer = new MockWebServer();
+        mockWebServer.setDispatcher(new Dispatcher() {
+            @Override
+            public MockResponse dispatch(RecordedRequest request) throws InterruptedException {
+                String url = request.getPath();
+                if (url.contains(TestUtils.REVOKE_URI)
+                       && url.contains(testAccessToken)
+                        && url.contains(testClientId)){
+                    return new MockResponse().setResponseCode(200);
+                }
+                return new MockResponse().setResponseCode(404);
+            }
+        });
+        String tokenRevocationUrl = mockWebServer.url(TestUtils.REVOKE_URI).toString();
+        sut.mClientId.set(testClientId);
+
+        ReflectionUtils.refectSetValue(discoveryMoc, "docJson", TestUtils
+                .addField(new JSONObject(),
+                        RevokeTokenRequest.REVOKE_ENDPOINT_KEY, tokenRevocationUrl
+                ));
+
+        ReflectionUtils.refectSetValue(configurationMoc, "discoveryDoc", discoveryMoc);
+
+        when(mAuthStateManager.getCurrent()).thenReturn(mAuthState);
+        when(mAuthState.getAuthorizationServiceConfiguration())
+                .thenReturn(configurationMoc);
+
+        final AtomicBoolean isPassed = new AtomicBoolean();
+        final CountDownLatch latch = new CountDownLatch(1);
+
+        sut.revoke(testAccessToken, new OktaAppAuth.OktaRevokeListener() {
+            @Override
+            public void onSuccess() {
+                isPassed.set(true);
+                latch.countDown();
+            }
+
+            @Override
+            public void onError(AuthorizationException ex) {
+                isPassed.set(false);
+                latch.countDown();
+            }
+        });
+
+        latch.await();
+        assertTrue("onError has been called",isPassed.get());
+    }
+
+    @Test
+    public void testTokenRevocationConfigChangedException() {
+        String testToken = "testToken";
+        when(mConfiguration.hasConfigurationChanged()).thenReturn(true);
+        try {
+            sut.revoke(testToken, new OktaAppAuth.OktaRevokeListener() {
+                @Override
+                public void onSuccess() {
+                    fail("Test should fail with exception");
+                }
+
+                @Override
+                public void onError(AuthorizationException ex) {
+                    fail("Test should fail with exception");
+                }
+            });
+        } catch (IllegalStateException ex) {
+            assertThat(ex).isInstanceOf(IllegalStateException.class);
+            assertThat(ex.getMessage()).contains("Okta Configuration has changed");
+            return;
+        }
+        fail("Test should fail with exception");
+    }
+
+    @Test
+    public void testTokenRevocationOktaNotInitializedException() {
+        String testToken = "testToken";
+        AuthState mockedState = mock(AuthState.class);
+        when(mAuthStateManager.getCurrent()).thenReturn(mockedState);
+        when(mockedState.getAuthorizationServiceConfiguration()).thenReturn(null);
+        try {
+            sut.revoke(testToken, new OktaAppAuth.OktaRevokeListener() {
+                @Override
+                public void onSuccess() {
+                    fail("Test should fail with exception");
+                }
+
+                @Override
+                public void onError(AuthorizationException ex) {
+                    fail("Test should fail with exception");
+                }
+            });
+        } catch (IllegalStateException ex) {
+            assertThat(ex).isInstanceOf(IllegalStateException.class);
+            assertThat(ex.getMessage()).contains("Okta should be initialized first");
+            return;
+        }
+        fail("Test should fail with exception");
     }
 }

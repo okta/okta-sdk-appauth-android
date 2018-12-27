@@ -194,13 +194,12 @@ public class OAuthClientConfiguration {
             throws InvalidJsonDocumentException {
         JsonParser jsonParser = JsonParser.forJson(jsonObject);
 
-        //We can not take has code directly from JSONObject
-        //because JSONObject does not follow java has code contract
-        mConfigHash = jsonObject.toString().hashCode();
 
         mClientId = jsonParser.getRequiredString("client_id");
         mRedirectUri = jsonParser.getRequiredUri("redirect_uri");
         mEndSessionRedirectUri = jsonParser.getRequiredUri("end_session_redirect_uri");
+        mDiscoveryUri = jsonParser.getRequiredHttpsUri("issuer_uri")
+                .buildUpon().appendEncodedPath(OIDC_DISCOVERY).build();
 
         if (!isRedirectUrisRegistered()) {
             throw new InvalidJsonDocumentException(
@@ -211,10 +210,12 @@ public class OAuthClientConfiguration {
                             + "exists in your app manifest.");
         }
 
-        mDiscoveryUri = jsonParser.getRequiredHttpsUri("issuer_uri")
-                .buildUpon().appendEncodedPath(OIDC_DISCOVERY).build();
 
         mScopes = new LinkedHashSet<>(jsonParser.getRequiredStringArray("scopes"));
+
+        //We can not take has code directly from JSONObject
+        //because JSONObject does not follow java has code contract
+        mConfigHash = jsonObject.toString().hashCode();
 
         Log.d(TAG, String.format("Configuration loaded with: \n%s", this.toString()));
     }

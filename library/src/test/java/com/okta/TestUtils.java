@@ -28,9 +28,11 @@ public class TestUtils {
     public static final String TEST_ISSUER = "https://test.issuer";
     public static final List<String> TEST_SCOPES_SUPPORTED = Arrays.asList("openid", "profile");
 
+    public static final String REVOKE_URI = "/o/oauth/revoke";
     public static final String TEST_CODE_VERIFIER = "0123456789_0123456789_0123456789_0123456789";
     static final String TEST_AUTHORIZATION_ENDPOINT = "http://test.openid.com/o/oauth/auth";
     static final String TEST_TOKEN_ENDPOINT = "http://test.openid.com/o/oauth/token";
+    public static final String TEST_REVOKE_ENDPOINT = "http://test.openid.com" + REVOKE_URI;
     static final String TEST_USERINFO_ENDPOINT = "http://test.openid.com/o/oauth/userinfo";
     static final String TEST_REGISTRATION_ENDPOINT = "http://test.openid.com/o/oauth/register";
     static final String TEST_END_OF_SESSION_ENDPOINT = "http://test.openid.com/o/oauth/logout";
@@ -45,7 +47,7 @@ public class TestUtils {
     static final String TEST_SUBJECT = "SUBJ3CT";
     static final String TEST_AUDIENCE = "AUDI3NCE";
 
-    static final String TEST_JSON = "{\n"
+    public static final String TEST_JSON = "{\n"
             + " \"issuer\": \"" + TEST_ISSUER + "\",\n"
             + " \"authorization_endpoint\": \"" + TEST_AUTHORIZATION_ENDPOINT + "\",\n"
             + " \"token_endpoint\": \"" + TEST_TOKEN_ENDPOINT + "\",\n"
@@ -60,7 +62,8 @@ public class TestUtils {
             + " \"scopes_supported\": " + toJson(TEST_SCOPES_SUPPORTED) + ",\n"
             + " \"token_endpoint_auth_methods_supported\": "
             + toJson(TEST_TOKEN_ENDPOINT_AUTH_METHODS) + ",\n"
-            + " \"claims_supported\": " + toJson(TEST_CLAIMS_SUPPORTED) + "\n"
+            + " \"claims_supported\": " + toJson(TEST_CLAIMS_SUPPORTED) + ",\n"
+            + "\"revocation_endpoint\": \"" + TEST_REVOKE_ENDPOINT + "\"\n"
             + "}";
 
 
@@ -160,4 +163,10 @@ public class TestUtils {
                 .setNonce(null)
                 .build();
     }
+
+    public static JSONObject addField(JSONObject object, String name, String value) throws JSONException {
+        object.put(name, value);
+        return object;
+    }
+
 }

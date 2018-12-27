@@ -116,7 +116,6 @@ public class OktaManagementActivity extends Activity {
         } else if (isLoginFlow(response)) {
             runLoginFlow((AuthorizationResponse) response, ex);
         } else {
-            OktaAppAuth.getInstance(this).clearSessionData();
             sendPendingIntent(mCompleteIntent);
         }
 

@@ -31,6 +31,7 @@ import android.widget.TextView;
 
 import com.bumptech.glide.Glide;
 import com.okta.appauth.android.OktaAppAuth;
+import com.okta.appauth.android.Tokens;
 import net.openid.appauth.AuthorizationException;
 import org.joda.time.format.DateTimeFormat;
 import org.json.JSONException;
@@ -64,7 +65,8 @@ public class UserInfoActivity extends AppCompatActivity {
         setContentView(R.layout.activity_user_info);
 
         if (!mOktaAppAuth.isUserLoggedIn()) {
-            signOut();
+            displayLoading("Finishing session");
+            clearData();
             finish();
         }
 
@@ -179,6 +181,25 @@ public class UserInfoActivity extends AppCompatActivity {
 
     }
 
+    private void clearData() {
+        Tokens tokens = mOktaAppAuth.getTokens();
+        if (tokens.getAccessToken() != null) {
+            mOktaAppAuth.revoke(tokens.getAccessToken(), new OktaAppAuth.OktaRevokeListener() {
+                @Override
+                public void onSuccess() {
+                    mOktaAppAuth.clearSessionData();
+                    startActivity(new Intent(UserInfoActivity.this, LoginActivity.class));
+                    finish();
+                }
+
+                @Override
+                public void onError(AuthorizationException ex) {
+                    showSnackbar("Unable to clean data");
+                }
+            });
+        }
+    }
+
     @MainThread
     private void displayLoading(String message) {
         findViewById(R.id.loading_container).setVisibility(View.VISIBLE);
@@ -232,6 +253,11 @@ public class UserInfoActivity extends AppCompatActivity {
         viewProfileButton.setVisibility(View.VISIBLE);
         viewProfileButton.setOnClickListener((View view) -> fetchUserInfo());
 
+        Button revokeTokenButton = findViewById(R.id.revoke_token);
+
+        revokeTokenButton.setVisibility(View.VISIBLE);
+        revokeTokenButton.setOnClickListener((View view) -> clearData());
+
         (findViewById(R.id.sign_out)).setOnClickListener((View view) -> signOut());
 
         View userInfoCard = findViewById(R.id.userinfo_card);
@@ -263,9 +289,9 @@ public class UserInfoActivity extends AppCompatActivity {
 
     @MainThread
     private void showSnackbar(String message) {
-        Snackbar.make(findViewById(R.id.coordinator),
+        getWindow().getDecorView().post(() -> Snackbar.make(findViewById(R.id.coordinator),
                 message,
                 Snackbar.LENGTH_SHORT)
-                .show();
+                .show());
     }
 }

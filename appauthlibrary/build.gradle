@@ -1,0 +1,32 @@
+apply plugin: 'com.android.library'
+apply from: "${rootDir}/gradle/android-common.gradle"
+version = "${rootProject.versionName}"
+
+android {
+
+    defaultConfig {
+        project.archivesBaseName = "appauth-android"
+        manifestPlaceholders = [
+                'appAuthRedirectScheme': ''
+        ]
+    }
+
+    testOptions {
+        unitTests {
+            includeAndroidResources = true
+        }
+    }
+
+    sourceSets {
+        main {
+            manifest {
+                srcFile "${rootDir.absolutePath}/app-auth/AppAuth-Android/library/AndroidManifest.xml"
+            }
+        }
+    }
+
+}
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+}
