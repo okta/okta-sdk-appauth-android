@@ -4,7 +4,14 @@
 
 ## Example
 
-To run the example project, clone the repo, and run `./gradlew assemble` from the root directory.
+To run the example project, clone the repo and run `./gradlew assemble` from the root directory.
+
+```bash
+git clone --recurse-submodules https://github.com/okta/okta-sdk-appauth-android.git
+cd okta-sdk-appauth-android
+./gradlew assemble
+```
+
 You can then install the example APK onto an Android device or emulator.
 
 ## Installation
