@@ -31,7 +31,6 @@ import android.widget.TextView;
 
 import com.bumptech.glide.Glide;
 import com.okta.appauth.android.OktaAppAuth;
-import com.okta.appauth.android.Tokens;
 import net.openid.appauth.AuthorizationException;
 import org.joda.time.format.DateTimeFormat;
 import org.json.JSONException;
@@ -65,6 +64,7 @@ public class UserInfoActivity extends AppCompatActivity {
         setContentView(R.layout.activity_user_info);
 
         if (!mOktaAppAuth.isUserLoggedIn()) {
+            Log.d(TAG, "No logged in user found. Finishing session");
             displayLoading("Finishing session");
             clearData();
             finish();
@@ -181,23 +181,21 @@ public class UserInfoActivity extends AppCompatActivity {
 
     }
 
+    @MainThread
     private void clearData() {
-        Tokens tokens = mOktaAppAuth.getTokens();
-        if (tokens.getAccessToken() != null) {
-            mOktaAppAuth.revoke(tokens.getAccessToken(), new OktaAppAuth.OktaRevokeListener() {
-                @Override
-                public void onSuccess() {
-                    mOktaAppAuth.clearSessionData();
-                    startActivity(new Intent(UserInfoActivity.this, LoginActivity.class));
-                    finish();
-                }
+        mOktaAppAuth.revoke(new OktaAppAuth.OktaRevokeListener() {
+            @Override
+            public void onSuccess() {
+                mOktaAppAuth.clearSession();
+                startActivity(new Intent(UserInfoActivity.this, LoginActivity.class));
+                finish();
+            }
 
-                @Override
-                public void onError(AuthorizationException ex) {
-                    showSnackbar("Unable to clean data");
-                }
-            });
-        }
+            @Override
+            public void onError(AuthorizationException ex) {
+                showSnackbar("Unable to clean data");
+            }
+        });
     }
 
     @MainThread

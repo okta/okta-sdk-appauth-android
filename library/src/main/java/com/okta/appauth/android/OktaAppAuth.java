@@ -74,9 +74,9 @@ public class OktaAppAuth {
     private static final AtomicReference<WeakReference<OktaAppAuth>> INSTANCE_REF =
             new AtomicReference<>(new WeakReference<OktaAppAuth>(null));
 
-    protected AuthorizationService mAuthService;
-    protected AuthStateManager mAuthStateManager;
-    protected OAuthClientConfiguration mConfiguration;
+    protected AtomicReference<AuthorizationService> mAuthService = new AtomicReference<>();
+    protected final AuthStateManager mAuthStateManager;
+    protected final OAuthClientConfiguration mConfiguration;
 
     protected final AtomicReference<OktaAuthListener> mInitializationListener =
             new AtomicReference<>();
@@ -163,7 +163,7 @@ public class OktaAppAuth {
     }
 
     /**
-     * Performs revocation of acessToken or refreshToken.
+     * Performs revocation of accessToken or refreshToken.
      *
      * @param token accessToken or refreshToken {@link OktaAppAuth#getTokens()}
      * @param listener revocation callback {@link OktaRevokeListener}
@@ -183,6 +183,57 @@ public class OktaAppAuth {
         });
     }
 
+    /**
+     * Performs revocation of accessToken and refreshToken if they are available.
+     *
+     * @param listener revocation callback {@link OktaRevokeListener}
+     */
+    public void revoke(@NonNull final OktaRevokeListener listener) {
+
+        if (!isUserLoggedIn()) {
+            throw new IllegalStateException("No logged in user found");
+        }
+        if (mConfiguration.hasConfigurationChanged()) {
+            throw new IllegalStateException("Okta Configuration has changed");
+        }
+        if (mAuthStateManager.getCurrent().getAuthorizationServiceConfiguration() == null) {
+            throw new IllegalStateException("Okta should be initialized first");
+        }
+
+        if (mAuthStateManager.getCurrent().getRefreshToken() != null) {
+            //if we have refresh token we have to perform revoke it first
+            mExecutor.submit(new Runnable() {
+                @Override
+                public void run() {
+                    doRevoke(
+                            mAuthStateManager.getCurrent().getRefreshToken(),
+                            new OktaRevokeListener() {
+                            @Override
+                            public void onSuccess() {
+                                    doRevoke(mAuthStateManager
+                                                    .getCurrent().getAccessToken(),
+                                            listener);
+                            }
+
+                            @Override
+                            public void onError(AuthorizationException ex) {
+                                    listener.onError(ex);
+                            }
+                        });
+                }
+            });
+        } else {
+            mExecutor.submit(new Runnable() {
+                @Override
+                public void run() {
+                    doRevoke(mAuthStateManager.getCurrent().getAccessToken(), listener);
+                }
+            });
+        }
+
+    }
+
+    @WorkerThread
     private void doRevoke(String token,@NonNull RevokeTokenRequest.RevokeListener listener) {
         RevokeTokenRequest request =
                 new RevokeTokenRequest.Builder(
@@ -274,20 +325,22 @@ public class OktaAppAuth {
     }
 
     /**
-     * Removes all stored information opn current session like
+     * Removes all stored information on current session like
      * Tokens and Authentication Server config.
      * NOTE: After removal {@link OktaAppAuth#init} should be called.
      */
-    public void clearSessionData() {
+    public void clearSession() {
         // discard the authorization and token state, but retain the configuration and
         // dynamic client registration (if applicable), to save from retrieving them again.
         AuthState currentState = mAuthStateManager.getCurrent();
-        AuthState clearedState =
-                new AuthState(currentState.getAuthorizationServiceConfiguration());
-        if (currentState.getLastRegistrationResponse() != null) {
-            clearedState.update(currentState.getLastRegistrationResponse());
+        if (currentState.getAuthorizationServiceConfiguration() != null) {
+            AuthState clearedState =
+                    new AuthState(currentState.getAuthorizationServiceConfiguration());
+            if (currentState.getLastRegistrationResponse() != null) {
+                clearedState.update(currentState.getLastRegistrationResponse());
+            }
+            mAuthStateManager.replace(clearedState);
         }
-        mAuthStateManager.replace(clearedState);
     }
 
     /**
@@ -296,9 +349,9 @@ public class OktaAppAuth {
      * paused or destroyed (i.e. in {@link android.app.Activity#onDestroy()}).
      */
     public void dispose() {
-        if (mAuthService != null) {
-            mAuthService.dispose();
-            mAuthService = null;
+        if (mAuthService.get() != null) {
+            mAuthService.get().dispose();
+            mAuthService.set(null);
         }
     }
 
@@ -608,6 +661,7 @@ public class OktaAppAuth {
         mAuthRequest.set(authRequestBuilder.build());
     }
 
+    @Deprecated
     private void createAuthRequest(@Nullable String loginHint) {
         Log.i(TAG, "Creating auth request" +
                 (loginHint == null ? "" : ("for login hint: " + loginHint)));
@@ -625,10 +679,11 @@ public class OktaAppAuth {
         mAuthRequest.set(authRequestBuilder.build());
     }
 
+    @WorkerThread
     private void warmUpBrowser(Uri uri) {
         Log.i(TAG, "Warming up browser instance for auth request");
         CustomTabsIntent.Builder intentBuilder =
-                mAuthService.createCustomTabsIntentBuilder(uri);
+                createAuthorizationServiceIfNeeded().createCustomTabsIntentBuilder(uri);
         intentBuilder.setToolbarColor(mCustomTabColor);
         mAuthIntent.set(intentBuilder.build());
     }
@@ -652,12 +707,13 @@ public class OktaAppAuth {
         });
     }
 
+    @WorkerThread
     private void recreateAuthorizationService(Context context) {
-        if (mAuthService != null) {
+        if (mAuthService.get() != null) {
             Log.i(TAG, "Discarding existing AuthService instance");
-            mAuthService.dispose();
+            mAuthService.get().dispose();
         }
-        mAuthService = createAuthorizationService(context);
+        mAuthService.set(createAuthorizationService(context));
         mAuthRequest.set(null);
         mAuthIntent.set(null);
     }
@@ -668,10 +724,10 @@ public class OktaAppAuth {
      * @return a usable instance of {@see AuthorizationService}
      */
     AuthorizationService createAuthorizationServiceIfNeeded() {
-        if (mAuthService == null) {
+        if (mAuthService.get() == null) {
             recreateAuthorizationService(mContext);
         }
-        return mAuthService;
+        return mAuthService.get();
     }
 
     private AuthorizationService createAuthorizationService(Context context) {
@@ -698,6 +754,7 @@ public class OktaAppAuth {
                 mAuthIntent.get());
     }
 
+    @WorkerThread
     private void doEndSession(PendingIntent completionIntent, PendingIntent cancelIntent) {
         Log.d(TAG, "Starting end session flow");
 
@@ -709,11 +766,13 @@ public class OktaAppAuth {
         warmUpBrowser(request.toUri());
 
         CustomTabsIntent.Builder intentBuilder =
-                mAuthService.createCustomTabsIntentBuilder(request.toUri());
+                createAuthorizationServiceIfNeeded()
+                        .createCustomTabsIntentBuilder(request.toUri());
         intentBuilder.setToolbarColor(mCustomTabColor);
         CustomTabsIntent endSessionIntent = intentBuilder.build();
 
-        mAuthService.performEndOfSessionRequest(request, completionIntent,
+        createAuthorizationServiceIfNeeded()
+                .performEndOfSessionRequest(request, completionIntent,
                 cancelIntent, endSessionIntent);
     }
 

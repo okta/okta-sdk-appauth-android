@@ -213,7 +213,7 @@ public class OAuthClientConfiguration {
 
         mScopes = new LinkedHashSet<>(jsonParser.getRequiredStringArray("scopes"));
 
-        //We can not take has code directly from JSONObject
+        //We can not take hash code directly from JSONObject
         //because JSONObject does not follow java has code contract
         mConfigHash = jsonObject.toString().hashCode();
 

@@ -4,11 +4,13 @@ import android.app.PendingIntent;
 import android.content.Context;
 
 import android.net.Uri;
+import android.support.annotation.NonNull;
 import android.support.customtabs.CustomTabsIntent;
 import com.okta.ReflectionUtils;
 import com.okta.TestUtils;
 
 import net.openid.appauth.*;
+import net.openid.appauth.connectivity.DefaultConnectionBuilder;
 import okhttp3.mockwebserver.Dispatcher;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
@@ -59,9 +61,9 @@ public class OktaAppAuthTest {
         mContext = RuntimeEnvironment.application.getApplicationContext();
         MockitoAnnotations.initMocks(this);
         sut = OktaAppAuth.getInstance(RuntimeEnvironment.application.getApplicationContext());
-        sut.mAuthService = mAuthService;
-        sut.mAuthStateManager = mAuthStateManager;
-        sut.mConfiguration = mConfiguration;
+        sut.mAuthService.set(mAuthService);
+        ReflectionUtils.refectSetValue(sut, "mAuthStateManager", mAuthStateManager);
+        ReflectionUtils.refectSetValue(sut, "mConfiguration", mConfiguration);
         sut.mExecutor = TestUtils.buildSyncynchronesExecutorService();
         when(mAuthStateManager.getCurrent()).thenReturn(mAuthState);
     }
@@ -69,16 +71,16 @@ public class OktaAppAuthTest {
     @Test
     public void testDisposeNullsAuthenticationService() {
         sut = OktaAppAuth.getInstance(mContext);
-        sut.mAuthService = new AuthorizationService(mContext);
-        assertThat(sut.mAuthService).isNotNull();
+        sut.mAuthService.set(new AuthorizationService(mContext));
+        assertThat(sut.mAuthService.get()).isNotNull();
         sut.dispose();
-        assertThat(sut.mAuthService).isNull();
+        assertThat(sut.mAuthService.get()).isNull();
     }
 
     @Test
     public void testAuthServiceCreatesWhenNeeded() {
         sut = OktaAppAuth.getInstance(mContext);
-        sut.mAuthService = null;
+        sut.mAuthService.set(null);
         sut.createAuthorizationServiceIfNeeded();
         assertThat(sut.mAuthService).isNotNull();
     }
@@ -87,21 +89,20 @@ public class OktaAppAuthTest {
     public void testAuthServiceUsesOriginalWhenSet() {
         AuthorizationService authorizationService = new AuthorizationService(mContext);
         sut = OktaAppAuth.getInstance(mContext);
-        sut.mAuthService = authorizationService;
+        sut.mAuthService.set(authorizationService);
         sut.createAuthorizationServiceIfNeeded();
-        assertThat(sut.mAuthService).isNotNull();
-        assertThat(sut.mAuthService).isSameAs(authorizationService);
+        assertThat(sut.mAuthService.get()).isNotNull();
+        assertThat(sut.mAuthService.get()).isSameAs(authorizationService);
     }
 
     @Test
     public void testAuthServiceRecreatesWhenDisposed() {
         AuthorizationService authorizationService = new AuthorizationService(mContext);
-        sut = OktaAppAuth.getInstance(mContext);
-        sut.mAuthService = authorizationService;
+        sut.mAuthService.set(authorizationService);
         sut.dispose();
         sut.createAuthorizationServiceIfNeeded();
-        assertThat(sut.mAuthService).isNotNull();
-        assertThat(sut.mAuthService).isNotSameAs(authorizationService);
+        assertThat(sut.mAuthService.get()).isNotNull();
+        assertThat(sut.mAuthService.get()).isNotSameAs(authorizationService);
     }
 
     @Test
@@ -323,7 +324,7 @@ public class OktaAppAuthTest {
     }
 
     @Test
-    public void testTokenRevocationSuccess() throws JSONException, InterruptedException {
+    public void testAccessTokenRevocationSuccess() throws JSONException, InterruptedException {
         final String testAccessToken = "testAccesToken";
         final String  testClientId = "clientId";
         AuthorizationServiceDiscovery discoveryMoc = mock(AuthorizationServiceDiscovery.class);
@@ -375,6 +376,245 @@ public class OktaAppAuthTest {
 
         latch.await();
         assertTrue("onError has been called",isPassed.get());
+    }
+
+    @Test
+    public void testAccessTokenRevocationFailure() throws JSONException, InterruptedException {
+        final String testAccessToken = "testAccesToken";
+        final String  testClientId = "clientId";
+        AuthorizationServiceDiscovery discoveryMoc = mock(AuthorizationServiceDiscovery.class);
+        AuthorizationServiceConfiguration configurationMoc = mock(AuthorizationServiceConfiguration.class);
+
+        MockWebServer mockWebServer = new MockWebServer();
+        mockWebServer.setDispatcher(new Dispatcher() {
+            @Override
+            public MockResponse dispatch(RecordedRequest request) throws InterruptedException {
+                String url = request.getPath();
+                if (url.contains(TestUtils.REVOKE_URI)
+                        && url.contains(testAccessToken)
+                        && url.contains(testClientId)){
+                    return new MockResponse().setResponseCode(400);
+                }
+                return new MockResponse().setResponseCode(404);
+            }
+        });
+        String tokenRevocationUrl = mockWebServer.url(TestUtils.REVOKE_URI).toString();
+        sut.mClientId.set(testClientId);
+
+        ReflectionUtils.refectSetValue(discoveryMoc, "docJson", TestUtils
+                .addField(new JSONObject(),
+                        RevokeTokenRequest.REVOKE_ENDPOINT_KEY, tokenRevocationUrl
+                ));
+
+        ReflectionUtils.refectSetValue(configurationMoc, "discoveryDoc", discoveryMoc);
+
+        when(mAuthStateManager.getCurrent()).thenReturn(mAuthState);
+        when(mAuthState.getAuthorizationServiceConfiguration())
+                .thenReturn(configurationMoc);
+
+        final AtomicBoolean isPassed = new AtomicBoolean();
+        final CountDownLatch latch = new CountDownLatch(1);
+
+        sut.revoke(testAccessToken, new OktaAppAuth.OktaRevokeListener() {
+            @Override
+            public void onSuccess() {
+                isPassed.set(false);
+                latch.countDown();
+            }
+
+            @Override
+            public void onError(AuthorizationException ex) {
+                if (ex.type == AuthorizationException.TYPE_OAUTH_TOKEN_ERROR) {
+                    isPassed.set(true);
+                }
+                latch.countDown();
+            }
+        });
+
+        latch.await();
+        assertTrue("onSuccess has been called",isPassed.get());
+    }
+
+    @Test
+    public void testAllTokenRevocationSuccess() throws JSONException, InterruptedException {
+        final String testAccessToken = "testAccesToken";
+        final String testRefreshToke = "testRefreshToke";
+        final String  testClientId = "clientId";
+        AuthorizationServiceDiscovery discoveryMoc = mock(AuthorizationServiceDiscovery.class);
+        AuthorizationServiceConfiguration configurationMoc = mock(AuthorizationServiceConfiguration.class);
+
+        MockWebServer mockWebServer = new MockWebServer();
+        mockWebServer.setDispatcher(new Dispatcher() {
+            @Override
+            public MockResponse dispatch(RecordedRequest request) throws InterruptedException {
+                String url = request.getPath();
+                if (url.contains(TestUtils.REVOKE_URI)
+                        && url.contains(testClientId)
+                        && (url.contains(testAccessToken) || url.contains(testRefreshToke))
+                        ){
+                    return new MockResponse().setResponseCode(200);
+                }
+                return new MockResponse().setResponseCode(404);
+            }
+        });
+        String tokenRevocationUrl = mockWebServer.url(TestUtils.REVOKE_URI).toString();
+        sut.mClientId.set(testClientId);
+
+        ReflectionUtils.refectSetValue(discoveryMoc, "docJson", TestUtils
+                .addField(new JSONObject(),
+                        RevokeTokenRequest.REVOKE_ENDPOINT_KEY, tokenRevocationUrl
+                ));
+
+        ReflectionUtils.refectSetValue(configurationMoc, "discoveryDoc", discoveryMoc);
+
+        when(mAuthStateManager.getCurrent()).thenReturn(mAuthState);
+        when(mAuthState.getAuthorizationServiceConfiguration())
+                .thenReturn(configurationMoc);
+        when(mAuthState.getAccessToken()).thenReturn(testAccessToken);
+        when(mAuthState.getRefreshToken()).thenReturn(testRefreshToke);
+
+        when(mAuthState.isAuthorized()).thenReturn(true);
+
+        final AtomicBoolean isPassed = new AtomicBoolean();
+        final CountDownLatch latch = new CountDownLatch(1);
+
+        sut.revoke(new OktaAppAuth.OktaRevokeListener() {
+            @Override
+            public void onSuccess() {
+                isPassed.set(true);
+                latch.countDown();
+            }
+
+            @Override
+            public void onError(AuthorizationException ex) {
+                isPassed.set(false);
+                latch.countDown();
+            }
+        });
+
+        latch.await();
+        assertTrue("onError has been called",isPassed.get());
+    }
+
+    @Test
+    public void testAllTokenRevocationNoRefreshTokenSuccess() throws JSONException, InterruptedException {
+        final String testAccessToken = "testAccesToken";
+        final String  testClientId = "clientId";
+        AuthorizationServiceDiscovery discoveryMoc = mock(AuthorizationServiceDiscovery.class);
+        AuthorizationServiceConfiguration configurationMoc = mock(AuthorizationServiceConfiguration.class);
+
+        MockWebServer mockWebServer = new MockWebServer();
+        mockWebServer.setDispatcher(new Dispatcher() {
+            @Override
+            public MockResponse dispatch(RecordedRequest request) throws InterruptedException {
+                String url = request.getPath();
+                if (url.contains(TestUtils.REVOKE_URI)
+                        && url.contains(testClientId)
+                        && (url.contains(testAccessToken))
+                        ){
+                    return new MockResponse().setResponseCode(200);
+                }
+                return new MockResponse().setResponseCode(404);
+            }
+        });
+        String tokenRevocationUrl = mockWebServer.url(TestUtils.REVOKE_URI).toString();
+        sut.mClientId.set(testClientId);
+
+        ReflectionUtils.refectSetValue(discoveryMoc, "docJson", TestUtils
+                .addField(new JSONObject(),
+                        RevokeTokenRequest.REVOKE_ENDPOINT_KEY, tokenRevocationUrl
+                ));
+
+        ReflectionUtils.refectSetValue(configurationMoc, "discoveryDoc", discoveryMoc);
+
+        when(mAuthStateManager.getCurrent()).thenReturn(mAuthState);
+        when(mAuthState.getAuthorizationServiceConfiguration())
+                .thenReturn(configurationMoc);
+        when(mAuthState.getAccessToken()).thenReturn(testAccessToken);
+        when(mAuthState.getRefreshToken()).thenReturn(null);
+
+        when(mAuthState.isAuthorized()).thenReturn(true);
+
+        final AtomicBoolean isPassed = new AtomicBoolean();
+        final CountDownLatch latch = new CountDownLatch(1);
+
+        sut.revoke(new OktaAppAuth.OktaRevokeListener() {
+            @Override
+            public void onSuccess() {
+                isPassed.set(true);
+                latch.countDown();
+            }
+
+            @Override
+            public void onError(AuthorizationException ex) {
+                isPassed.set(false);
+                latch.countDown();
+            }
+        });
+
+        latch.await();
+        assertTrue("onError has been called",isPassed.get());
+    }
+
+    @Test
+    public void testAllTokenRevocationRefreshTokenFailure() throws JSONException, InterruptedException {
+        final String testRefreshToken = "testRefreshToken";
+        final String  testClientId = "clientId";
+        AuthorizationServiceDiscovery discoveryMoc = mock(AuthorizationServiceDiscovery.class);
+        AuthorizationServiceConfiguration configurationMoc = mock(AuthorizationServiceConfiguration.class);
+
+        MockWebServer mockWebServer = new MockWebServer();
+        mockWebServer.setDispatcher(new Dispatcher() {
+            @Override
+            public MockResponse dispatch(RecordedRequest request) throws InterruptedException {
+                String url = request.getPath();
+                if (url.contains(TestUtils.REVOKE_URI)
+                        && url.contains(testClientId)
+                        && (url.contains(testRefreshToken))
+                        ){
+                    return new MockResponse().setResponseCode(400);
+                }
+                return new MockResponse().setResponseCode(404);
+            }
+        });
+        String tokenRevocationUrl = mockWebServer.url(TestUtils.REVOKE_URI).toString();
+        sut.mClientId.set(testClientId);
+
+        ReflectionUtils.refectSetValue(discoveryMoc, "docJson", TestUtils
+                .addField(new JSONObject(),
+                        RevokeTokenRequest.REVOKE_ENDPOINT_KEY, tokenRevocationUrl
+                ));
+
+        ReflectionUtils.refectSetValue(configurationMoc, "discoveryDoc", discoveryMoc);
+
+        when(mAuthStateManager.getCurrent()).thenReturn(mAuthState);
+        when(mAuthState.getAuthorizationServiceConfiguration())
+                .thenReturn(configurationMoc);
+        when(mAuthState.getRefreshToken()).thenReturn(testRefreshToken);
+
+        when(mAuthState.isAuthorized()).thenReturn(true);
+
+        final AtomicBoolean isPassed = new AtomicBoolean();
+        final CountDownLatch latch = new CountDownLatch(1);
+
+        sut.revoke(new OktaAppAuth.OktaRevokeListener() {
+            @Override
+            public void onSuccess() {
+                isPassed.set(false);
+                latch.countDown();
+            }
+
+            @Override
+            public void onError(AuthorizationException ex) {
+                if (ex.type == AuthorizationException.TYPE_OAUTH_TOKEN_ERROR) {
+                    isPassed.set(true);
+                }
+                latch.countDown();
+            }
+        });
+
+        latch.await();
+        assertTrue("onSuccess has been called",isPassed.get());
     }
 
     @Test

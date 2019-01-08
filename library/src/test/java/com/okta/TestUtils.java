@@ -24,6 +24,8 @@ public class TestUtils {
     public static final String TEST_NONCE = "NONC3";
     public static final String TEST_APP_SCHEME = "com.test.app";
     public static final Uri TEST_APP_REDIRECT_URI = Uri.parse(TEST_APP_SCHEME + ":/oidc_callback");
+    public static final Uri TEST_APP_DISCOVERY_URI = Uri.parse(TEST_APP_SCHEME
+            + "/.well-known/openid-configuration");
 
     public static final String TEST_ISSUER = "https://test.issuer";
     public static final List<String> TEST_SCOPES_SUPPORTED = Arrays.asList("openid", "profile");
