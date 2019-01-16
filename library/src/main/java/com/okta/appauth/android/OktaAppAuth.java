@@ -611,8 +611,8 @@ public class OktaAppAuth {
                 Log.e(TAG, "Configuration was invalid: " + mConfiguration.getConfigurationError());
                 listener.onTokenFailure(
                         AuthorizationException.GeneralErrors.INVALID_DISCOVERY_DOCUMENT);
+                return;
             }
-
             mConfiguration.acceptConfiguration();
         }
 
