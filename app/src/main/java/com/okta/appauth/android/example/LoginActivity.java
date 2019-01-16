@@ -75,6 +75,10 @@ public class LoginActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
+        if (mOktaAppAuth != null) {
+            mOktaAppAuth.dispose();
+            mOktaAppAuth = null;
+        }
         super.onDestroy();
     }
 
