@@ -1,11 +1,11 @@
 {
-  "client_id": "{clientId}",
-  "redirect_uri": "{redirectUri}",
-  "end_session_redirect_uri": "{endSessionUri}",
+  "client_id": "0oaiv94wtjW7DHvvj0h7",
+  "redirect_uri": "com.okta.appauth.android.example:/callback",
+  "end_session_redirect_uri": "com.okta.appauth.android.example:/logout",
   "scopes": [
     "openid",
     "profile",
     "offline_access"
   ],
-  "issuer_uri": "https://{yourOktaDomain}.com/oauth2/default"
+  "issuer_uri": "https://dev-486177.oktapreview.com/oauth2/default"
 }

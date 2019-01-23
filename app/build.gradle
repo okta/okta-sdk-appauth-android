@@ -23,7 +23,7 @@ android {
 }
 
 dependencies {
-    implementation project(":library")
+    implementation project(':library')
     implementation "com.android.support:appcompat-v7:${rootProject.appcompatVersion}"
     implementation "com.android.support:design:${rootProject.appcompatVersion}"
     implementation "com.github.bumptech.glide:glide:${rootProject.glideVersion}"

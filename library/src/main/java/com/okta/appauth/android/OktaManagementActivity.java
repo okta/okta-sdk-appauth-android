@@ -66,7 +66,7 @@ public class OktaManagementActivity extends Activity {
      * @param completeIntent The PendingIntent to direct the flow once the token exchange completes
      * @param cancelIntent The PendingIntent to direct the flow if the authentication is cancelled
      *     or if the authorization fails
-     * @return A PendingIntent that will start this Activity
+     * @return A PendingIntent that will startAuthorization this Activity
      */
     static PendingIntent createStartIntent(
             Context context,

@@ -27,7 +27,7 @@
             android:theme="@style/AppTheme"
             tools:ignore="GoogleAppIndexingWarning">
 
-        <!-- Main Activity -->
+        <!-- Main Activity android:name=".LoginActivity"-->
         <activity
                 android:name=".StartActivity"
                 android:label="@string/app_name_short"
@@ -51,5 +51,4 @@
                   android:windowSoftInputMode="stateHidden"
                   android:configChanges="keyboardHidden|orientation|screenSize"/>
     </application>
-
 </manifest>
