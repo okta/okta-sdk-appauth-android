@@ -868,6 +868,23 @@ public class OktaAppAuth {
     }
 
     /**
+     * Listener for OktaNativeAuth operations.
+     */
+    public interface OktaNativeAuthListener {
+        /**
+         * Called when the operation is successful to allow the caller to be notified.
+         */
+        void onSuccess();
+
+        /**
+         * Called when a failure occurs during the operation related to the authorization flow.
+         *
+         * @param ex The exception describing the failure
+         */
+        void onTokenFailure(@NonNull AuthenticationError ex);
+    }
+
+    /**
      * Listener for OktaAppAuth operations.
      */
     public interface OktaAuthListener {
