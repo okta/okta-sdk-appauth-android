@@ -15,8 +15,8 @@
 
 package com.okta.appauth.android;
 
-import net.openid.appauth.AuthorizationException;
-import net.openid.appauth.ClientAuthentication;
+import com.okta.openid.appauth.AuthorizationException;
+import com.okta.openid.appauth.ClientAuthentication;
 
 /**
  * The class which represent errors which happen during authentication.

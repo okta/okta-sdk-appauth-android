@@ -47,12 +47,13 @@ ext {
     junitVersion = "4.12"
     mockitoVersion = "2.8.47"
     robolectricVersion = "4.0.2"
-    assertjVersion = "1.1.1"
+    assertjVersion = "1.2.0"
     okhttpVersion = "3.12.0"
     jsonWebTokenVersion = "0.10.5"
+    assertjCoreVersion = "3.10.0"
 
     // Gradle plugin version
-    checkstyleVersion = "8.1"
+    checkstyleVersion = "8.6"
     saxonVersion = "8.7"
 
     // AppAuth specification

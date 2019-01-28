@@ -32,20 +32,20 @@ import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.util.Log;
-import net.openid.appauth.AppAuthConfiguration;
-import net.openid.appauth.AuthState;
-import net.openid.appauth.AuthState.AuthStateAction;
-import net.openid.appauth.AuthorizationException;
-import net.openid.appauth.AuthorizationRequest;
-import net.openid.appauth.AuthorizationService;
-import net.openid.appauth.AuthorizationServiceConfiguration;
-import net.openid.appauth.AuthorizationServiceDiscovery;
-import net.openid.appauth.ClientAuthentication;
-import net.openid.appauth.ClientAuthentication.UnsupportedAuthenticationMethod;
-import net.openid.appauth.EndSessionRequest;
-import net.openid.appauth.ResponseTypeValues;
-import net.openid.appauth.TokenResponse;
-import net.openid.appauth.connectivity.DefaultConnectionBuilder;
+import com.okta.openid.appauth.AppAuthConfiguration;
+import com.okta.openid.appauth.AuthState;
+import com.okta.openid.appauth.AuthState.AuthStateAction;
+import com.okta.openid.appauth.AuthorizationException;
+import com.okta.openid.appauth.AuthorizationRequest;
+import com.okta.openid.appauth.AuthorizationService;
+import com.okta.openid.appauth.AuthorizationServiceConfiguration;
+import com.okta.openid.appauth.AuthorizationServiceDiscovery;
+import com.okta.openid.appauth.ClientAuthentication;
+import com.okta.openid.appauth.ClientAuthentication.UnsupportedAuthenticationMethod;
+import com.okta.openid.appauth.EndSessionRequest;
+import com.okta.openid.appauth.ResponseTypeValues;
+import com.okta.openid.appauth.TokenResponse;
+import com.okta.openid.appauth.connectivity.DefaultConnectionBuilder;
 import okio.Okio;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -871,6 +871,23 @@ public class OktaAppAuth {
      */
     public interface OktaRevokeListener extends RevokeTokenRequest.RevokeListener {
 
+    }
+
+    /**
+     * Listener for OktaNativeAuth operations.
+     */
+    public interface OktaNativeAuthListener {
+        /**
+         * Called when the operation is successful to allow the caller to be notified.
+         */
+        void onSuccess();
+
+        /**
+         * Called when a failure occurs during the operation related to the authorization flow.
+         *
+         * @param ex The exception describing the failure
+         */
+        void onTokenFailure(@NonNull AuthenticationError ex);
     }
 
     /**

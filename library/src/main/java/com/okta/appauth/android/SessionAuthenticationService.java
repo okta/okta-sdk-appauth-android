@@ -19,13 +19,12 @@ import android.net.Uri;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.text.TextUtils;
-
-import net.openid.appauth.AuthorizationException;
-import net.openid.appauth.AuthorizationRequest;
-import net.openid.appauth.AuthorizationResponse;
-import net.openid.appauth.AuthorizationService;
-import net.openid.appauth.ClientAuthentication;
-import net.openid.appauth.TokenResponse;
+import com.okta.openid.appauth.AuthorizationException;
+import com.okta.openid.appauth.AuthorizationRequest;
+import com.okta.openid.appauth.AuthorizationResponse;
+import com.okta.openid.appauth.AuthorizationService;
+import com.okta.openid.appauth.ClientAuthentication;
+import com.okta.openid.appauth.TokenResponse;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;
@@ -118,7 +117,7 @@ class SessionAuthenticationService {
                         null,
                         AuthorizationException.AuthorizationRequestErrors.byString(
                                 error.getMessage()));
-                return new AuthenticationResult<AuthorizationResponse>(null, error);
+                return new AuthenticationResult<>(null, error);
             }
 
             Uri locationUri = Uri.parse(conn.getHeaderField("Location"));
@@ -131,7 +130,7 @@ class SessionAuthenticationService {
                         null,
                         AuthorizationException.AuthorizationRequestErrors.byString(
                                 errorDescription));
-                return new AuthenticationResult<AuthorizationResponse>(
+                return new AuthenticationResult<>(
                         null,
                         new AuthenticationError(
                                 error, conn.getResponseCode(), errorDescription));
@@ -142,21 +141,21 @@ class SessionAuthenticationService {
                     .setState(state)
                     .build();
 
-            return new AuthenticationResult<AuthorizationResponse>(
+            return new AuthenticationResult<>(
                     authorizationResponse, null);
         } catch (MalformedURLException ex) {
             ex.printStackTrace();
             mStateManager.updateAfterAuthorization(
                     null,
                     AuthorizationException.AuthorizationRequestErrors.byString(ex.getMessage()));
-            return new AuthenticationResult<AuthorizationResponse>(
+            return new AuthenticationResult<>(
                     null, AuthenticationError.createAuthenticationError(ex));
         } catch (IOException ex) {
             ex.printStackTrace();
             mStateManager.updateAfterAuthorization(
                     null,
                     AuthorizationException.AuthorizationRequestErrors.byString(ex.getMessage()));
-            return new AuthenticationResult<AuthorizationResponse>(
+            return new AuthenticationResult<>(
                     null,
                     AuthenticationError.createAuthenticationError(ex));
         } finally {

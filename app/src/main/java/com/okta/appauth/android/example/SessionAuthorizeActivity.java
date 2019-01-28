@@ -31,7 +31,7 @@ import android.widget.Toast;
 import com.okta.appauth.android.AuthenticationError;
 import com.okta.appauth.android.OktaAppAuth;
 
-import net.openid.appauth.AuthorizationException;
+import com.okta.openid.appauth.AuthorizationException;
 
 /**
  * Example Session Authorize Activity where authentication with session token takes place.

@@ -2,8 +2,6 @@ package com.okta.appauth.android;
 
 import android.support.annotation.NonNull;
 
-import net.openid.appauth.AuthorizationException;
-
 import java.util.ArrayList;
 import java.util.List;
 

@@ -4,14 +4,7 @@
 
 ## Example
 
-To run the example project, clone the repo and run `./gradlew assemble` from the root directory.
-
-```bash
-git clone --recurse-submodules https://github.com/okta/okta-sdk-appauth-android.git
-cd okta-sdk-appauth-android
-./gradlew assemble
-```
-
+To run the example project, clone the repo, and run `./gradlew assemble` from the root directory.
 You can then install the example APK onto an Android device or emulator.
 
 ## Installation
@@ -266,7 +259,7 @@ public class UserInfoActivity extends Activity {
         Intent cancelIntent = new Intent(this, UserInfoActivity.class);
         cancelIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
 
-        mOktaAuth.endSession(
+        mOktaAuth.signOutFromOkta(
                 this,
                 PendingIntent.getActivity(this, 0, completionIntent, 0),
                 PendingIntent.getActivity(this, 0, cancelIntent, 0)

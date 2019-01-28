@@ -20,8 +20,8 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.util.Log;
 
-import net.openid.appauth.Preconditions;
-import net.openid.appauth.connectivity.ConnectionBuilder;
+import com.okta.openid.appauth.Preconditions;
+import com.okta.openid.appauth.connectivity.ConnectionBuilder;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;

@@ -18,7 +18,7 @@ package com.okta.appauth.android;
 import android.content.Context;
 import android.content.SharedPreferences;
 
-import net.openid.appauth.AuthState;
+import com.okta.openid.appauth.AuthState;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;

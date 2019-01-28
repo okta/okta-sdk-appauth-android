@@ -4,13 +4,11 @@ import android.app.PendingIntent;
 import android.content.Context;
 
 import android.net.Uri;
-import android.support.annotation.NonNull;
 import android.support.customtabs.CustomTabsIntent;
 import com.okta.ReflectionUtils;
 import com.okta.TestUtils;
 
-import net.openid.appauth.*;
-import net.openid.appauth.connectivity.DefaultConnectionBuilder;
+import com.okta.openid.appauth.*;
 import okhttp3.mockwebserver.Dispatcher;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;

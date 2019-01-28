@@ -3,10 +3,10 @@ package com.okta;
 import android.net.Uri;
 import android.util.Base64;
 
-import net.openid.appauth.AuthorizationRequest;
-import net.openid.appauth.AuthorizationServiceConfiguration;
-import net.openid.appauth.AuthorizationServiceDiscovery;
-import net.openid.appauth.ResponseTypeValues;
+import com.okta.openid.appauth.AuthorizationRequest;
+import com.okta.openid.appauth.AuthorizationServiceConfiguration;
+import com.okta.openid.appauth.AuthorizationServiceDiscovery;
+import com.okta.openid.appauth.ResponseTypeValues;
 
 import org.json.JSONArray;
 import org.json.JSONException;

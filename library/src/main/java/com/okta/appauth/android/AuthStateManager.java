@@ -23,10 +23,10 @@ import android.support.annotation.Nullable;
 import android.support.annotation.VisibleForTesting;
 import android.util.Log;
 
-import net.openid.appauth.AuthState;
-import net.openid.appauth.AuthorizationException;
-import net.openid.appauth.AuthorizationResponse;
-import net.openid.appauth.TokenResponse;
+import com.okta.openid.appauth.AuthState;
+import com.okta.openid.appauth.AuthorizationException;
+import com.okta.openid.appauth.AuthorizationResponse;
+import com.okta.openid.appauth.TokenResponse;
 import org.json.JSONException;
 
 import java.lang.ref.WeakReference;

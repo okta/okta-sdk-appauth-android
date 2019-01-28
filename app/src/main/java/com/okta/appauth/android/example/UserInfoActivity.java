@@ -31,7 +31,7 @@ import android.widget.TextView;
 
 import com.bumptech.glide.Glide;
 import com.okta.appauth.android.OktaAppAuth;
-import net.openid.appauth.AuthorizationException;
+import com.okta.openid.appauth.AuthorizationException;
 import org.joda.time.format.DateTimeFormat;
 import org.json.JSONException;
 import org.json.JSONObject;

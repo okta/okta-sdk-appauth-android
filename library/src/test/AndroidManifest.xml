@@ -12,7 +12,7 @@
                   tools:node="replace"
         />
 
-        <activity android:name="net.openid.appauth.RedirectUriReceiverActivity"
+        <activity android:name="com.okta.openid.appauth.RedirectUriReceiverActivity"
                   android:exported="true"
                   tools:node="replace">
             <intent-filter>

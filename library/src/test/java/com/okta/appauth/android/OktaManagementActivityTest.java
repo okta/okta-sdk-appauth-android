@@ -21,8 +21,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 
-import net.openid.appauth.AuthState;
-import net.openid.appauth.AuthorizationResponse;
+import com.okta.openid.appauth.AuthState;
+import com.okta.openid.appauth.AuthorizationResponse;
 import org.assertj.android.api.Assertions;
 import org.json.JSONException;
 import org.junit.Before;

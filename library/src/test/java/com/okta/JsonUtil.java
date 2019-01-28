@@ -5,7 +5,7 @@ import android.support.annotation.Nullable;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import static net.openid.appauth.Preconditions.checkNotNull;
+import static com.okta.openid.appauth.Preconditions.checkNotNull;
 
 public class JsonUtil {
 

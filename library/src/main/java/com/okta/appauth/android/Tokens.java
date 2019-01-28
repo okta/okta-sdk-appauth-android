@@ -16,7 +16,7 @@
 package com.okta.appauth.android;
 
 import android.support.annotation.Nullable;
-import net.openid.appauth.AuthState;
+import com.okta.openid.appauth.AuthState;
 
 /**
  * OpenId tokens.

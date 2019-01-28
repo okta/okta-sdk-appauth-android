@@ -5,11 +5,10 @@ import android.net.Uri;
 import com.okta.ConnectionBuilderForTest;
 import com.okta.TestUtils;
 
-import net.openid.appauth.AppAuthConfiguration;
-import net.openid.appauth.AuthorizationRequest;
-import net.openid.appauth.AuthorizationService;
-import net.openid.appauth.ResponseTypeValues;
-
+import com.okta.openid.appauth.AppAuthConfiguration;
+import com.okta.openid.appauth.AuthorizationRequest;
+import com.okta.openid.appauth.AuthorizationService;
+import com.okta.openid.appauth.ResponseTypeValues;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -19,9 +18,7 @@ import org.robolectric.RuntimeEnvironment;
 
 import java.io.IOException;
 
-import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
-import javax.net.ssl.SSLSession;
 import javax.net.ssl.SSLSocketFactory;
 
 import okhttp3.mockwebserver.Dispatcher;
@@ -55,12 +52,7 @@ public class SessionAuthenticationServiceTest {
 
         SSLSocketFactory sslSocketFactory = TestUtils.getSSL(this);
         HttpsURLConnection.setDefaultSSLSocketFactory(sslSocketFactory);
-        HttpsURLConnection.setDefaultHostnameVerifier(new HostnameVerifier() {
-            @Override
-            public boolean verify(String hostname, SSLSession session) {
-                return true;
-            }
-        });
+        HttpsURLConnection.setDefaultHostnameVerifier((hostname, session) -> true);
         server.useHttps(sslSocketFactory, false);
         server.start();
         String baseUrl = server.url("/").toString();
@@ -102,7 +94,7 @@ public class SessionAuthenticationServiceTest {
         String nonce;
 
         @Override
-        public MockResponse dispatch(RecordedRequest request) throws InterruptedException {
+        public MockResponse dispatch(RecordedRequest request) {
             if (request.getPath().contains(TestUtils.TEST_AUTHORIZATION_ENDPOINT)){
                 return new MockResponse().setResponseCode(302).addHeader("Location",TestUtils.TEST_APP_REDIRECT_URI+"?code=valid_code&state=random_state").setBody("Test");
             } else if (request.getPath().contains(TestUtils.TEST_TOKEN_ENDPOINT)){

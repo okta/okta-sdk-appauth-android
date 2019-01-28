@@ -26,15 +26,15 @@ import android.support.annotation.VisibleForTesting;
 import android.support.annotation.WorkerThread;
 import android.util.Log;
 
-import net.openid.appauth.AppAuthConfiguration;
-import net.openid.appauth.AuthState;
-import net.openid.appauth.AuthorizationException;
-import net.openid.appauth.AuthorizationManagementResponse;
-import net.openid.appauth.AuthorizationResponse;
-import net.openid.appauth.AuthorizationService;
-import net.openid.appauth.ClientAuthentication;
-import net.openid.appauth.TokenResponse;
-import net.openid.appauth.internal.Logger;
+import com.okta.openid.appauth.AppAuthConfiguration;
+import com.okta.openid.appauth.AuthState;
+import com.okta.openid.appauth.AuthorizationException;
+import com.okta.openid.appauth.AuthorizationManagementResponse;
+import com.okta.openid.appauth.AuthorizationResponse;
+import com.okta.openid.appauth.AuthorizationService;
+import com.okta.openid.appauth.ClientAuthentication;
+import com.okta.openid.appauth.TokenResponse;
+import com.okta.openid.appauth.internal.Logger;
 
 /**
  * This Activity is used to manage Authorization and end of session requests.

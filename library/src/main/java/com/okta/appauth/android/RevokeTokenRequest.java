@@ -20,7 +20,7 @@ import android.support.annotation.Nullable;
 import android.support.annotation.VisibleForTesting;
 import android.support.annotation.WorkerThread;
 import android.util.Log;
-import net.openid.appauth.AuthorizationException;
+import com.okta.openid.appauth.AuthorizationException;
 import okio.ByteString;
 import org.json.JSONException;
 import org.json.JSONObject;

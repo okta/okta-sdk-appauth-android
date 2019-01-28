@@ -34,7 +34,7 @@ import android.widget.Toast;
 import com.okta.appauth.android.OktaAppAuth;
 import com.okta.appauth.android.OktaAppAuth.LoginHintChangeHandler;
 
-import net.openid.appauth.AuthorizationException;
+import com.okta.openid.appauth.AuthorizationException;
 
 /**
  * Example Login Activity where authentication takes place.
