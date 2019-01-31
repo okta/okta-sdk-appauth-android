@@ -1,6 +1,9 @@
 apply plugin: "com.android.library"
-
+apply from: "${rootDir}/gradle/okta-common.gradle"
 apply from: "${rootDir}/gradle/android-common.gradle"
+apply from: "${rootDir}/gradle/style.gradle"
+apply plugin: 'com.jfrog.bintray'
+apply plugin: "com.github.dcendents.android-maven"
 
 group = "com.okta.android"
 version = "${rootProject.versionName}"
@@ -48,9 +51,6 @@ buildscript {
    }
 }
 
-apply plugin: 'com.jfrog.bintray'
-apply plugin: "com.github.dcendents.android-maven"
-
 dependencies {
     //used as a provider of manifest for app-auth
     //should be removed when singout functionality is merged
@@ -71,8 +71,6 @@ dependencies {
     testImplementation "com.squareup.okhttp3:mockwebserver:${rootProject.okhttpVersion}"
     testImplementation "com.squareup.okhttp3:okhttp:${rootProject.okhttpVersion}"
 }
-
-apply from: "${rootDir}/gradle/style.gradle"
 
 bintray {
     user = System.getenv("BINTRAY_USER")

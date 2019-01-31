@@ -1,6 +1,6 @@
 apply plugin: "com.android.application"
 apply from: "${rootDir}/gradle/android-common.gradle"
-
+apply from: "${rootDir}/gradle/style.gradle"
 
 android {
     defaultConfig {
@@ -30,5 +30,3 @@ dependencies {
     implementation "com.squareup.okio:okio:${rootProject.okioVersion}"
     implementation "joda-time:joda-time:${rootProject.jodaTimeVersion}"
 }
-
-apply from: "${rootDir}/gradle/style.gradle"
