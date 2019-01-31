@@ -27,3 +27,5 @@ task sourcesJar(type: Jar, dependsOn:"generateReleaseSources") {
     from android.sourceSets.main.java.srcDirs
     classifier = "sources"
 }
+
+apply from: "${rootDir}/gradle/okta-common.gradle"
