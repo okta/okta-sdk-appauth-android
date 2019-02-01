@@ -17,6 +17,7 @@ package com.okta.appauth.android.example;
 
 import android.annotation.TargetApi;
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.ColorRes;
@@ -70,10 +71,16 @@ public class TestLoginActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        Log.d(TAG, "onCreate");
         super.onCreate(savedInstanceState);
         setContentView(R.layout.test_activity_login);
         mButton = findViewById(R.id.start_button);
-        mButton.setOnClickListener(v -> mOktAuth.startAuthorization());
+        mButton.setOnClickListener(v -> {
+                    mOktAuth.startAuthorization();
+                    //TODO For testing.
+                    setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+                }
+        );
         mTvStatus = findViewById(R.id.status);
 
         mOktaAccount = new OktaAuthAccount.Builder(this)
@@ -91,29 +98,27 @@ public class TestLoginActivity extends AppCompatActivity {
             public void onSuccess(OktaClientAPI clientAPI) {
                 Log.d("TestLoginActivity", "SUCCESS");
                 mClient = clientAPI;
-                runOnUiThread(() -> {
-                            mTvStatus.setText("authentication success");
-                            mButton.setText("Get profile");
-                            mButton.setOnClickListener(v -> getProfile());
-                        }
-                );
+                mTvStatus.setText("authentication success");
+                mButton.setText("Get profile");
+                mButton.setOnClickListener(v -> getProfile());
             }
 
             @Override
             public void onStatus(String status) {
                 Log.d("TestLoginActivity", status);
-                runOnUiThread(() -> mTvStatus.setText(status));
+                mTvStatus.setText(status);
             }
 
             @Override
             public void onCancel() {
                 Log.d("TestLoginActivity", "CANCELED!");
-                runOnUiThread(() -> mTvStatus.setText("canceled"));
+                mTvStatus.setText("canceled");
             }
 
             @Override
             public void onError(String msg, AuthorizationException error) {
-                Log.d("TestLoginActivity", error.errorDescription);
+                Log.d("TestLoginActivity", error.errorDescription + "onError" + Thread.currentThread().toString());
+                mTvStatus.setText(error.errorDescription);
             }
         }).withAccount(mOktaAccount)
                 .withTabColor(getColorCompat(R.color.colorPrimary))
@@ -123,6 +128,7 @@ public class TestLoginActivity extends AppCompatActivity {
 
     @Override
     protected void onStart() {
+        Log.d(TAG, "onStart");
         super.onStart();
         if (getIntent().getBooleanExtra(EXTRA_FAILED, false)) {
             showSnackbar(getString(R.string.auth_canceled));
@@ -131,6 +137,7 @@ public class TestLoginActivity extends AppCompatActivity {
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        Log.d(TAG, "onActivityResult");
         super.onActivityResult(requestCode, resultCode, data);
 
         // Pass result to OktaAuthManager for processing
@@ -139,6 +146,7 @@ public class TestLoginActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
+        Log.d(TAG, "onDestroy");
         if (mOktAuth != null) {
             mOktAuth.onDestroy();
         }

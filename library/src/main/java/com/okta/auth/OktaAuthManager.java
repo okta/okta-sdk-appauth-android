@@ -3,6 +3,8 @@ package com.okta.auth;
 import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Handler;
+import android.os.Looper;
 import android.support.annotation.ColorInt;
 import android.support.annotation.NonNull;
 import android.support.annotation.WorkerThread;
@@ -15,8 +17,6 @@ import net.openid.appauth.AuthorizationException;
 import net.openid.appauth.AuthorizationManagementResponse;
 import net.openid.appauth.AuthorizationRequest;
 import net.openid.appauth.AuthorizationResponse;
-import net.openid.appauth.AuthorizationService;
-import net.openid.appauth.ClientAuthentication;
 import net.openid.appauth.IdToken;
 import net.openid.appauth.ResponseTypeValues;
 import net.openid.appauth.SystemClock;
@@ -63,12 +63,12 @@ public class OktaAuthManager {
     private ExecutorService mExecutor = Executors.newSingleThreadExecutor();
 
     private OktaClientAPI mOktaClient;
-    //private AuthorizationService mService;
     private AuthorizationRequest mAuthRequest;
     private AuthorizationResponse mAuthResponse;
     private LoginMethod mMethod;
     private AuthState mState;
-
+    private Handler mMainHandler;
+    private Runnable mCurrentRunnable;
     private static final int REQUEST_CODE = 100;
 
     private OktaAuthManager(@NonNull Builder builder) {
@@ -79,6 +79,18 @@ public class OktaAuthManager {
         mPayload = builder.mPayload;
         mMethod = builder.mMethod;
         mState = AuthState.INIT;
+        mMainHandler = new Handler(Looper.getMainLooper());
+    }
+
+    //Send results back on main thread.
+    private void deliverResults(Runnable r) {
+        if (mCallback != null) {
+            if (mCurrentRunnable != null) {
+                mMainHandler.removeCallbacks(mCurrentRunnable);
+            }
+            mCurrentRunnable = r;
+            mMainHandler.post(mCurrentRunnable);
+        }
     }
 
     //https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderConfig
@@ -90,8 +102,7 @@ public class OktaAuthManager {
                     mOktaAuthAccount.obtainConfiguration();
                     mState = AuthState.DISC;
                 } catch (AuthorizationException ae) {
-                    Log.d(TAG, "", ae);
-                    mCallback.onError("", ae);
+                    deliverResults(() -> mCallback.onError("", ae));
                 }
             });
         }
@@ -136,6 +147,12 @@ public class OktaAuthManager {
     }
 
     public void onDestroy() {
+        Log.d(TAG, "onDestroy called");
+        if (mCurrentRunnable != null) {
+            mMainHandler.removeCallbacks(mCurrentRunnable);
+        }
+        mCallback = null;
+        mCurrentRunnable = null;
         mExecutor.shutdownNow();
     }
 
@@ -146,8 +163,8 @@ public class OktaAuthManager {
             Intent intent = createAuthIntent();
             mActivity.startActivityForResult(intent, REQUEST_CODE);
         } else {
-            mCallback.onError("Invalid account information",
-                    AuthorizationException.GeneralErrors.INVALID_DISCOVERY_DOCUMENT);
+            deliverResults(() -> mCallback.onError("Invalid account information",
+                    AuthorizationException.GeneralErrors.INVALID_DISCOVERY_DOCUMENT));
         }
     }
 
@@ -198,7 +215,10 @@ public class OktaAuthManager {
                             AuthorizationException.GeneralErrors.JSON_DESERIALIZATION_ERROR,
                             jsonEx);
                 }
-                mCallback.onError(error, ex);
+                //TODO fix
+                final String er = error;
+                final AuthorizationException finalex = ex;
+                deliverResults(() -> mCallback.onError(er, finalex));
                 return;
             }
 
@@ -206,10 +226,9 @@ public class OktaAuthManager {
             try {
                 tokenResponse = new TokenResponse.Builder(tokenRequest).fromResponseJson(json).build();
             } catch (JSONException jsonEx) {
-                mCallback.onError(null,
-                        AuthorizationException.fromTemplate(
-                                AuthorizationException.GeneralErrors.JSON_DESERIALIZATION_ERROR,
-                                jsonEx));
+                deliverResults(() -> mCallback.onError("JsonException", AuthorizationException.fromTemplate(
+                        AuthorizationException.GeneralErrors.JSON_DESERIALIZATION_ERROR,
+                        jsonEx)));
                 return;
             }
 
@@ -218,31 +237,31 @@ public class OktaAuthManager {
                 try {
                     idToken = IdToken.from(tokenResponse.idToken);
                 } catch (IdToken.IdTokenException | JSONException ex) {
-                    mCallback.onError("Unable to parse ID Token",
+                    deliverResults(() -> mCallback.onError("Unable to parse ID Token",
                             AuthorizationException.fromTemplate(
                                     AuthorizationException.GeneralErrors.ID_TOKEN_PARSING_ERROR,
-                                    ex));
+                                    ex)));
                     return;
                 }
 
                 try {
                     idToken.validate(tokenRequest, SystemClock.INSTANCE);
                 } catch (AuthorizationException ex) {
-                    mCallback.onError("IdToken validation error", ex);
+                    deliverResults(() -> mCallback.onError("IdToken validation error", ex));
                     return;
                 }
             }
-            mCallback.onSuccess(new OktaClientAPI(mOktaAuthAccount, tokenResponse));
+            deliverResults(() -> mCallback.onSuccess(new OktaClientAPI(mOktaAuthAccount, tokenResponse)));
         } catch (IOException ex) {
             Logger.debugWithStack(ex, "Failed to complete exchange request");
             exception = AuthorizationException.fromTemplate(
                     AuthorizationException.GeneralErrors.NETWORK_ERROR, ex);
-            mCallback.onError("Failed to complete exchange request", exception);
+            deliverResults(() -> mCallback.onError("Failed to complete exchange request", exception));
         } catch (JSONException ex) {
             Logger.debugWithStack(ex, "Failed to complete exchange request");
             exception = AuthorizationException.fromTemplate(
                     AuthorizationException.GeneralErrors.JSON_DESERIALIZATION_ERROR, ex);
-            mCallback.onError("Failed to complete exchange request", exception);
+            deliverResults(() -> mCallback.onError("Failed to complete exchange request", exception));
         } finally {
             Utils.closeQuietly(is);
         }

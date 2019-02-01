@@ -32,7 +32,6 @@ public class OktaAuthenticationActivity extends Activity {
     private Uri mAuthUri;
     private int mCustomTabColor;
 
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -123,7 +122,9 @@ public class OktaAuthenticationActivity extends Activity {
 
     @Override
     protected void onDestroy() {
-        mTabManager.dispose();
+        if (mTabManager != null) {
+            mTabManager.dispose();
+        }
         super.onDestroy();
     }
 }
