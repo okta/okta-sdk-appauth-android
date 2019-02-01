@@ -13,7 +13,9 @@ import net.openid.appauth.browser.AnyBrowserMatcher;
 import net.openid.appauth.browser.BrowserDescriptor;
 import net.openid.appauth.browser.BrowserMatcher;
 import net.openid.appauth.browser.BrowserSelector;
+import net.openid.appauth.browser.BrowserWhitelist;
 import net.openid.appauth.browser.CustomTabManager;
+import net.openid.appauth.browser.VersionedBrowserMatcher;
 import net.openid.appauth.internal.Logger;
 
 import org.json.JSONException;
@@ -24,9 +26,12 @@ public class OktaAuthenticationActivity extends Activity {
     static final String EXTRA_AUTH_URI = "com.okta.auth.AUTH_URI";
     static final String EXTRA_TAB_OPTIONS = "com.okta.auth.TAB_OPTIONS";
 
+    private CustomTabManager mTabManager;
+
     private boolean mAuthStarted = false;
     private Uri mAuthUri;
     private int mCustomTabColor;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -38,17 +43,17 @@ public class OktaAuthenticationActivity extends Activity {
             return;
         }
 
-        Bundle state;
+        Bundle bundle;
         if (savedInstanceState == null) {
-            state = getIntent().getExtras();
+            bundle = getIntent().getExtras();
         } else {
-            state = savedInstanceState;
+            bundle = savedInstanceState;
         }
 
-        if (state != null) {
-            mAuthUri = state.getParcelable(EXTRA_AUTH_URI);
-            mCustomTabColor = state.getInt(EXTRA_TAB_OPTIONS, -1);
-            mAuthStarted = state.getBoolean(EXTRA_AUTH_STARTED, false);
+        if (bundle != null) {
+            mAuthUri = bundle.getParcelable(EXTRA_AUTH_URI);
+            mCustomTabColor = bundle.getInt(EXTRA_TAB_OPTIONS, -1);
+            mAuthStarted = bundle.getBoolean(EXTRA_AUTH_STARTED, false);
             Intent browserIntent = createBrowserIntent();
             if (browserIntent != null) {
                 startActivity(browserIntent);
@@ -88,12 +93,19 @@ public class OktaAuthenticationActivity extends Activity {
     }
 
     private Intent createBrowserIntent() {
-        BrowserDescriptor descriptor = BrowserSelector.select(this, AnyBrowserMatcher.INSTANCE);
+        BrowserDescriptor descriptor = BrowserSelector.select(this,
+                new BrowserWhitelist(VersionedBrowserMatcher.CHROME_CUSTOM_TAB,
+                        VersionedBrowserMatcher.CHROME_BROWSER,
+                        VersionedBrowserMatcher.FIREFOX_CUSTOM_TAB,
+                        VersionedBrowserMatcher.FIREFOX_BROWSER,
+                        VersionedBrowserMatcher.SAMSUNG_CUSTOM_TAB,
+                        VersionedBrowserMatcher.SAMSUNG_BROWSER));
         if (descriptor == null) {
             return null;
         }
-        CustomTabManager tabManager = new CustomTabManager(this);
-        CustomTabsIntent.Builder intentBuilder = tabManager.createTabBuilder(mAuthUri);
+        mTabManager = new CustomTabManager(this);
+        mTabManager.bind(descriptor.packageName);
+        CustomTabsIntent.Builder intentBuilder = mTabManager.createTabBuilder(mAuthUri);
         if (mCustomTabColor > 0) {
             intentBuilder.setToolbarColor(mCustomTabColor);
         }
@@ -107,5 +119,11 @@ public class OktaAuthenticationActivity extends Activity {
     private void sendResult(int rc, Intent intent) {
         setResult(rc, intent);
         finish();
+    }
+
+    @Override
+    protected void onDestroy() {
+        mTabManager.dispose();
+        super.onDestroy();
     }
 }

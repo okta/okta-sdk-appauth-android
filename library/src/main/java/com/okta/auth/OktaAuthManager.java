@@ -6,57 +6,68 @@ import android.net.Uri;
 import android.support.annotation.ColorInt;
 import android.support.annotation.NonNull;
 import android.support.annotation.WorkerThread;
-import android.support.customtabs.CustomTabsIntent;
 import android.text.TextUtils;
 import android.util.Log;
 
 import com.okta.appauth.android.AuthenticationPayload;
 
-import net.openid.appauth.AppAuthConfiguration;
 import net.openid.appauth.AuthorizationException;
 import net.openid.appauth.AuthorizationManagementResponse;
 import net.openid.appauth.AuthorizationRequest;
 import net.openid.appauth.AuthorizationResponse;
 import net.openid.appauth.AuthorizationService;
+import net.openid.appauth.ClientAuthentication;
+import net.openid.appauth.IdToken;
 import net.openid.appauth.ResponseTypeValues;
+import net.openid.appauth.SystemClock;
+import net.openid.appauth.TokenRequest;
+import net.openid.appauth.TokenResponse;
+import net.openid.appauth.Utils;
+import net.openid.appauth.connectivity.DefaultConnectionBuilder;
 import net.openid.appauth.internal.Logger;
+import net.openid.appauth.internal.UriUtil;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStreamWriter;
+import java.net.HttpURLConnection;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static android.app.Activity.RESULT_CANCELED;
-//import static com.okta.auth.OktaAuthenticationActivity.EXTRA_AUTH_INTENT;
 import static com.okta.auth.OktaAuthenticationActivity.EXTRA_AUTH_URI;
 import static com.okta.auth.OktaAuthenticationActivity.EXTRA_TAB_OPTIONS;
 
 public class OktaAuthManager {
     private static final String TAG = OktaAuthManager.class.getSimpleName();
 
-    //Persist options default is shared pref.
-    public enum Persist {
-        DEFAULT, SECURE, CUSTOM
+    private enum AuthState {
+        INIT, DISC, AUTH, CODE_EXCHANGE, FINISH
     }
 
-    //login method. currently only NATIVE and BROWSER.
+    //login method. currently only NATIVE and BROWSER_TAB.
     public enum LoginMethod {
-        BROWSER, NATIVE
+        BROWSER_TAB, NATIVE
     }
 
     private Activity mActivity;
     private OktaAuthAccount mOktaAuthAccount;
     private AuthorizationCallback mCallback;
-    private Persist mPersistOption;
     private AuthenticationPayload mPayload;
     private int mCustomTabColor;
 
-    private ExecutorService mExecutor;
+    private ExecutorService mExecutor = Executors.newSingleThreadExecutor();
 
     private OktaClientAPI mOktaClient;
-    private AuthorizationService mService;
+    //private AuthorizationService mService;
     private AuthorizationRequest mAuthRequest;
     private AuthorizationResponse mAuthResponse;
-
     private LoginMethod mMethod;
+    private AuthState mState;
 
     private static final int REQUEST_CODE = 100;
 
@@ -64,12 +75,10 @@ public class OktaAuthManager {
         mActivity = builder.mActivity;
         mOktaAuthAccount = builder.mOktaAuthAccount;
         mCallback = builder.mCallback;
-        mPersistOption = builder.mPersistOption;
         mCustomTabColor = builder.mCustomTabColor;
         mPayload = builder.mPayload;
         mMethod = builder.mMethod;
-        mExecutor = Executors.newSingleThreadExecutor();
-
+        mState = AuthState.INIT;
     }
 
     //https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderConfig
@@ -79,13 +88,14 @@ public class OktaAuthManager {
             mExecutor.submit(() -> {
                 try {
                     mOktaAuthAccount.obtainConfiguration();
+                    mState = AuthState.DISC;
                 } catch (AuthorizationException ae) {
                     Log.d(TAG, "", ae);
                     mCallback.onError("", ae);
                 }
             });
         }
-        if (mMethod == LoginMethod.BROWSER) {
+        if (mMethod == LoginMethod.BROWSER_TAB) {
             mExecutor.submit(this::authenticate);
         } else if (mMethod == LoginMethod.NATIVE) {
             //TODO start native login flow.
@@ -100,11 +110,12 @@ public class OktaAuthManager {
             mCallback.onCancel();
             return;
         }
+
         Uri responseUri = data.getData();
         Intent responseData = extractResponseData(responseUri);
         if (responseData == null) {
-            Logger.error("Failed to extract OAuth2 response from redirect");
-            mCallback.onError("Failed to extract OAuth2 response from redirect", null);
+            mCallback.onError("Failed to extract OAuth2 response from redirect",
+                    AuthorizationException.GeneralErrors.INVALID_REGISTRATION_RESPONSE);
             return;
         }
         //TODO handle other response types.
@@ -113,52 +124,133 @@ public class OktaAuthManager {
         AuthorizationException ex = AuthorizationException.fromIntent(responseData);
 
         if (ex != null || response == null) {
-            Log.w(TAG, "Authorization flow failed: " + ex);
-            mCallback.onCancel();
+            mCallback.onError("Authorization flow failed: ", ex);
         } else if (response instanceof AuthorizationResponse) {
             mAuthResponse = (AuthorizationResponse) response;
-            mCallback.onSuccess(mAuthResponse);
+            mState = AuthState.AUTH;
+            mCallback.onStatus("Code exchange");
+            mExecutor.submit(this::codeExchange);
         } else {
             mCallback.onCancel();
         }
     }
 
     public void onDestroy() {
-        if (mService != null) {
-            mService.dispose();
-        }
+        mExecutor.shutdownNow();
     }
 
-    public AuthorizationService getAuthService() {
-        return mService;
-    }
-
-    //TODO
     @WorkerThread
     private void authenticate() {
         if (mOktaAuthAccount.isConfigured()) {
             mAuthRequest = createAuthRequest();
-            if (mService != null) {
-                mService.dispose();
-            }
-            //TODO remove
-            mService = new AuthorizationService(mActivity, new AppAuthConfiguration.Builder().build());
             Intent intent = createAuthIntent();
             mActivity.startActivityForResult(intent, REQUEST_CODE);
+        } else {
+            mCallback.onError("Invalid account information",
+                    AuthorizationException.GeneralErrors.INVALID_DISCOVERY_DOCUMENT);
         }
     }
 
+    //TODO clean up http calls
     @WorkerThread
-    private Intent createAuthIntent() {
-        //CustomTabsIntent.Builder intentBuilder = mService.createCustomTabsIntentBuilder(mAuthRequest.toUri());
-        //intentBuilder.setToolbarColor(mCustomTabColor);
+    private void codeExchange() {
+        AuthorizationException exception;
+        InputStream is = null;
+        try {
+            HttpURLConnection conn = DefaultConnectionBuilder.INSTANCE.openConnection(
+                    mOktaAuthAccount.getServiceConfig().tokenEndpoint);
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+            conn.setRequestProperty("Accept", "application/json");
+            conn.setDoOutput(true);
+            TokenRequest tokenRequest = mAuthResponse.createTokenExchangeRequest();
+            Map<String, String> parameters = tokenRequest.getRequestParameters();
+            parameters.put(TokenRequest.PARAM_CLIENT_ID, mAuthRequest.clientId);
 
-        //CustomTabsIntent tabsIntent = intentBuilder.build();
-        //tabsIntent.intent.addFlags(Intent.FLAG_ACTIVITY_NO_HISTORY);
-        //Intent browserIntent = mService.prepareAuthorizationRequestIntent(mAuthRequest, tabsIntent);
+            String queryData = UriUtil.formUrlEncode(parameters);
+            conn.setRequestProperty("Content-Length", String.valueOf(queryData.length()));
+            OutputStreamWriter wr = new OutputStreamWriter(conn.getOutputStream());
+            wr.write(queryData);
+            wr.flush();
+
+            if (conn.getResponseCode() >= HttpURLConnection.HTTP_OK
+                    && conn.getResponseCode() < HttpURLConnection.HTTP_MULT_CHOICE) {
+                is = conn.getInputStream();
+            } else {
+                is = conn.getErrorStream();
+            }
+            String response = Utils.readInputStream(is);
+            JSONObject json = new JSONObject(response);
+
+            if (json.has(AuthorizationException.PARAM_ERROR)) {
+                AuthorizationException ex;
+                String error = AuthorizationException.PARAM_ERROR;
+                try {
+                    error = json.getString(AuthorizationException.PARAM_ERROR);
+                    ex = AuthorizationException.fromOAuthTemplate(
+                            AuthorizationException.TokenRequestErrors.byString(error),
+                            error,
+                            json.optString(AuthorizationException.PARAM_ERROR_DESCRIPTION, null),
+                            UriUtil.parseUriIfAvailable(
+                                    json.optString(AuthorizationException.PARAM_ERROR_URI)));
+                } catch (JSONException jsonEx) {
+                    ex = AuthorizationException.fromTemplate(
+                            AuthorizationException.GeneralErrors.JSON_DESERIALIZATION_ERROR,
+                            jsonEx);
+                }
+                mCallback.onError(error, ex);
+                return;
+            }
+
+            TokenResponse tokenResponse;
+            try {
+                tokenResponse = new TokenResponse.Builder(tokenRequest).fromResponseJson(json).build();
+            } catch (JSONException jsonEx) {
+                mCallback.onError(null,
+                        AuthorizationException.fromTemplate(
+                                AuthorizationException.GeneralErrors.JSON_DESERIALIZATION_ERROR,
+                                jsonEx));
+                return;
+            }
+
+            if (tokenResponse.idToken != null) {
+                IdToken idToken;
+                try {
+                    idToken = IdToken.from(tokenResponse.idToken);
+                } catch (IdToken.IdTokenException | JSONException ex) {
+                    mCallback.onError("Unable to parse ID Token",
+                            AuthorizationException.fromTemplate(
+                                    AuthorizationException.GeneralErrors.ID_TOKEN_PARSING_ERROR,
+                                    ex));
+                    return;
+                }
+
+                try {
+                    idToken.validate(tokenRequest, SystemClock.INSTANCE);
+                } catch (AuthorizationException ex) {
+                    mCallback.onError("IdToken validation error", ex);
+                    return;
+                }
+            }
+            mCallback.onSuccess(new OktaClientAPI(mOktaAuthAccount, tokenResponse));
+        } catch (IOException ex) {
+            Logger.debugWithStack(ex, "Failed to complete exchange request");
+            exception = AuthorizationException.fromTemplate(
+                    AuthorizationException.GeneralErrors.NETWORK_ERROR, ex);
+            mCallback.onError("Failed to complete exchange request", exception);
+        } catch (JSONException ex) {
+            Logger.debugWithStack(ex, "Failed to complete exchange request");
+            exception = AuthorizationException.fromTemplate(
+                    AuthorizationException.GeneralErrors.JSON_DESERIALIZATION_ERROR, ex);
+            mCallback.onError("Failed to complete exchange request", exception);
+        } finally {
+            Utils.closeQuietly(is);
+        }
+    }
+
+    private Intent createAuthIntent() {
         Intent intent = new Intent(mActivity, OktaAuthenticationActivity.class);
         intent.putExtra(EXTRA_AUTH_URI, mAuthRequest.toUri());
-        //intent.putExtra(EXTRA_AUTH_INTENT, browserIntent);
         intent.putExtra(EXTRA_TAB_OPTIONS, mCustomTabColor);
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
         return intent;
@@ -214,10 +306,9 @@ public class OktaAuthManager {
         private Activity mActivity;
         private OktaAuthAccount mOktaAuthAccount;
         private AuthorizationCallback mCallback;
-        private Persist mPersistOption = Persist.DEFAULT;
         private AuthenticationPayload mPayload;
         private int mCustomTabColor;
-        private LoginMethod mMethod = LoginMethod.BROWSER;
+        private LoginMethod mMethod = LoginMethod.BROWSER_TAB;
 
         public Builder(@NonNull Activity activity) {
             mActivity = activity;
@@ -234,11 +325,6 @@ public class OktaAuthManager {
 
         public Builder withAccount(@NonNull OktaAuthAccount account) {
             mOktaAuthAccount = account;
-            return this;
-        }
-
-        public Builder withPersistOption(@NonNull Persist option) {
-            mPersistOption = option;
             return this;
         }
 

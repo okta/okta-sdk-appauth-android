@@ -4,7 +4,7 @@ import net.openid.appauth.AuthorizationException;
 import net.openid.appauth.AuthorizationResponse;
 
 public interface AuthorizationCallback {
-    public void onSuccess(AuthorizationResponse response);
+    public void onSuccess(OktaClientAPI clientAPI);
 
     public void onStatus(String status);
 

@@ -31,12 +31,15 @@ import android.widget.TextView;
 import com.okta.auth.AuthorizationCallback;
 import com.okta.auth.OktaAuthManager;
 import com.okta.auth.OktaAuthAccount;
+import com.okta.auth.OktaClientAPI;
 
 import net.openid.appauth.AuthorizationException;
 import net.openid.appauth.AuthorizationResponse;
 import net.openid.appauth.AuthorizationService;
 import net.openid.appauth.NoClientAuthentication;
 import net.openid.appauth.TokenResponse;
+
+import org.json.JSONObject;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;
@@ -57,8 +60,9 @@ public class TestLoginActivity extends AppCompatActivity {
     private static final String EXTRA_FAILED = "failed";
 
     private OktaAuthManager mOktAuth;
-    private OktaAuthAccount mProvider;
-    private OktaAuthAccount mProviderWithRes;
+    private OktaAuthAccount mOktaAccount;
+    private OktaAuthAccount mOktaAccountWithRes;
+    private OktaClientAPI mClient;
     private TextView mTvStatus;
     private Button mButton;
     private AuthorizationResponse mResponse;
@@ -72,7 +76,7 @@ public class TestLoginActivity extends AppCompatActivity {
         mButton.setOnClickListener(v -> mOktAuth.startAuthorization());
         mTvStatus = findViewById(R.id.status);
 
-        mProvider = new OktaAuthAccount.Builder(this)
+        mOktaAccount = new OktaAuthAccount.Builder(this)
                 .clientId("0oaiv94wtjW7DHvvj0h7")
                 .redirectUri("com.okta.appauth.android.example:/callback")
                 .endSessionRedirectUri("com.okta.appauth.android.example:/logout")
@@ -80,17 +84,17 @@ public class TestLoginActivity extends AppCompatActivity {
                 .discoveryUri("https://dev-486177.oktapreview.com/oauth2/default")
                 .create();
 
-        mProviderWithRes = new OktaAuthAccount.Builder(this).withResId(R.raw.okta_app_auth_config);
+        mOktaAccountWithRes = new OktaAuthAccount.Builder(this).withResId(R.raw.okta_app_auth_config);
 
         mOktAuth = new OktaAuthManager.Builder(this).withCallback(new AuthorizationCallback() {
             @Override
-            public void onSuccess(AuthorizationResponse response) {
-                mResponse = response;
+            public void onSuccess(OktaClientAPI clientAPI) {
                 Log.d("TestLoginActivity", "SUCCESS");
+                mClient = clientAPI;
                 runOnUiThread(() -> {
-                            mTvStatus.setText("AccessToken:" + response.jsonSerializeString());
-                            mButton.setText("Exchange Auth Code");
-                            mButton.setOnClickListener(v -> exchangeAuthCode());
+                            mTvStatus.setText("authentication success");
+                            mButton.setText("Get profile");
+                            mButton.setOnClickListener(v -> getProfile());
                         }
                 );
             }
@@ -111,7 +115,7 @@ public class TestLoginActivity extends AppCompatActivity {
             public void onError(String msg, AuthorizationException error) {
                 Log.d("TestLoginActivity", error.errorDescription);
             }
-        }).withAccount(mProvider)
+        }).withAccount(mOktaAccount)
                 .withTabColor(getColorCompat(R.color.colorPrimary))
                 .create();
 
@@ -152,58 +156,17 @@ public class TestLoginActivity extends AppCompatActivity {
 
     private ExecutorService mExecutor = Executors.newSingleThreadExecutor();
 
-    private void fetchUserInfo() {
-        URL userInfoEndpoint;
-        try {
-            userInfoEndpoint = new URL(mProvider.getServiceConfig().discoveryDoc.getUserinfoEndpoint().toString());
-        } catch (MalformedURLException urlEx) {
-            Log.e(TAG, "Failed to construct user info endpoint URL", urlEx);
-            mTvStatus.setText("Failed to construct user info endpoint URL");
-            return;
-        }
-
+    private void getProfile() {
         mExecutor.submit(() -> {
-            final String response;
             try {
-                HttpURLConnection conn =
-                        (HttpURLConnection) userInfoEndpoint.openConnection();
-                conn.setRequestProperty("Authorization", "Bearer " + mToken.accessToken);
-                conn.setInstanceFollowRedirects(false);
-                response = Okio.buffer(Okio.source(conn.getInputStream()))
-                        .readString(Charset.forName("UTF-8"));
-                runOnUiThread(() -> mButton.setText(response));
-            } catch (IOException ioEx) {
-                Log.e(TAG, "Network error when querying userinfo endpoint", ioEx);
-                showSnackbar("Fetching user info failed");
+                JSONObject jsonObject = mClient.getUserProfile();
+                runOnUiThread(() -> {
+                    mTvStatus.setText(jsonObject.toString());
+                });
+            } catch (Exception ex) {
+                Log.d(TAG, "", ex);
             }
         });
-    }
-
-
-    private void exchangeAuthCode() {
-        if (mResponse != null && mResponse.authorizationCode != null) {
-
-            mOktAuth.getAuthService().performTokenRequest(
-                    mResponse.createTokenExchangeRequest(),
-                    NoClientAuthentication.INSTANCE,
-                    new AuthorizationService.TokenResponseCallback() {
-                        @Override
-                        public void onTokenRequestCompleted(@Nullable TokenResponse response,
-                                                            @Nullable AuthorizationException ex) {
-                            if (response != null) {
-                                mToken = response;
-                                mTvStatus.setText("Token Exchange Success");
-                                mButton.setText("FetchUserInfo");
-                                mButton.setOnClickListener(v -> fetchUserInfo());
-                            } else {
-                                mTvStatus.setText("Token exchange error");
-                                Log.d(TAG, "", ex);
-                            }
-
-                        }
-                    });
-        }
-
     }
 
     @TargetApi(Build.VERSION_CODES.M)

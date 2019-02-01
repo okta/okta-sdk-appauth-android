@@ -84,8 +84,7 @@ public class OktaAuthAccount {
         return mServiceConfig != null;
     }
 
-    //TODO change access
-    public AuthorizationServiceConfiguration getServiceConfig() {
+    AuthorizationServiceConfiguration getServiceConfig() {
         return mServiceConfig;
     }
 
