@@ -26,13 +26,11 @@ import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
-import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.okta.appauth.android.OktaAppAuth;
-import com.okta.appauth.android.OktaAppAuth.LoginHintChangeHandler;
 
 import com.okta.openid.appauth.AuthorizationException;
 
@@ -56,9 +54,6 @@ public class LoginActivity extends AppCompatActivity {
         setContentView(R.layout.activity_login);
 
         findViewById(R.id.start_auth).setOnClickListener((View view) -> startAuth());
-
-        ((EditText) findViewById(R.id.login_hint_value)).addTextChangedListener(
-                new LoginHintChangeHandler(mOktaAppAuth));
 
         mContainer = findViewById(R.id.auth_container);
     }

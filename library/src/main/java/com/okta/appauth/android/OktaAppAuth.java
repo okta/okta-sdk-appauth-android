@@ -19,8 +19,6 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.net.Uri;
 import android.os.Build;
-import android.os.Handler;
-import android.os.Looper;
 import android.support.annotation.AnyThread;
 import android.support.annotation.ColorInt;
 import android.support.annotation.MainThread;
@@ -28,9 +26,7 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.annotation.WorkerThread;
 import android.support.customtabs.CustomTabsIntent;
-import android.text.Editable;
 import android.text.TextUtils;
-import android.text.TextWatcher;
 import android.util.Log;
 import com.okta.openid.appauth.AppAuthConfiguration;
 import com.okta.openid.appauth.AuthState;
@@ -58,7 +54,6 @@ import java.net.URL;
 import java.nio.charset.Charset;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -247,8 +242,7 @@ public class OktaAppAuth {
     }
 
     /**
-     * Logs in a user and acquires authorization tokens for that user. Uses a login hint provided
-     * by a {@link LoginHintChangeHandler} if available.
+     * Logs in a user and acquires authorization tokens for that user.
      *
      * @param context          The application context
      * @param completionIntent The PendingIntent to direct the flow upon successful completion
@@ -988,83 +982,5 @@ public class OktaAppAuth {
          *                         {@code null} otherwise
          */
         void onFailure(int httpResponseCode, Exception ex);
-    }
-
-    /**
-     * A TextWatcher that supplies a login hint to the user authentication flow.
-     * Use of this handler is optional. After a delay, this handler will warm up
-     * the Custom Tabs browser used for authentication with the supplied login hint;
-     * the delay avoids constantly re-initializing the browser while the user is typing.
-     * <p/>
-     * NOTE: Going to be deleted in v 1.0.0
-     */
-    @Deprecated
-    public static final class LoginHintChangeHandler implements TextWatcher {
-
-        private static final int DEBOUNCE_DELAY_MS = 500;
-
-        private OktaAppAuth mOktaAppAuth;
-        private Handler mHandler;
-        private RecreateAuthRequestTask mTask;
-
-        /**
-         * Constructs a new LoginHintChangeHandler with the OktaAppAuth object that will be used
-         * in the call to {@link #login(Context, PendingIntent, PendingIntent)}.
-         *
-         * @param oktaAppAuth The OktaAppAuth object
-         */
-        public LoginHintChangeHandler(OktaAppAuth oktaAppAuth) {
-            mOktaAppAuth = oktaAppAuth;
-            mHandler = new Handler(Looper.getMainLooper());
-            mTask = new RecreateAuthRequestTask(oktaAppAuth, "");
-        }
-
-        @Override
-        public void beforeTextChanged(CharSequence cs, int start, int count, int after) {
-        }
-
-        @Override
-        public void onTextChanged(CharSequence cs, int start, int before, int count) {
-            mTask.cancel();
-            mTask = new RecreateAuthRequestTask(mOktaAppAuth, cs.toString().trim());
-            mHandler.postDelayed(mTask, DEBOUNCE_DELAY_MS);
-        }
-
-        @Override
-        public void afterTextChanged(Editable ed) {
-        }
-    }
-
-    /**
-     * Responds to changes in the login hint. After a "debounce" delay, warms up the browser
-     * for a request with the new login hint; this avoids constantly re-initializing the
-     * browser while the user is typing.
-     * @deprecated As of version 0.3.0, will be removed as a part of version 1.0.0
-     */
-    @Deprecated
-    private static final class RecreateAuthRequestTask implements Runnable {
-
-        private final AtomicBoolean mCanceled = new AtomicBoolean();
-
-        private OktaAppAuth mOktaAppAuth;
-        private final String mLoginHint;
-
-        private RecreateAuthRequestTask(OktaAppAuth oktaAppAuth, String loginHint) {
-            mOktaAppAuth = oktaAppAuth;
-            mLoginHint = loginHint;
-        }
-
-        @Override
-        public void run() {
-            if (mCanceled.get()) {
-                return;
-            }
-
-            mOktaAppAuth.createAuthRequest(mLoginHint);
-        }
-
-        public void cancel() {
-            mCanceled.set(true);
-        }
     }
 }
