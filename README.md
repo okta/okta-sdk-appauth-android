@@ -70,6 +70,7 @@ the following contents:
 ```
 
 **Note**: *To receive a **refresh_token**, you must include the `offline_access` scope.*
+**Note**: `end_session_redirect_uri` is a mandatory parameter.
 
 ### Update the URI Scheme
 
@@ -266,7 +267,7 @@ public class UserInfoActivity extends Activity {
         Intent cancelIntent = new Intent(this, UserInfoActivity.class);
         cancelIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
 
-        mOktaAuth.endSession(
+        mOktaAuth.signOutFromOkta(
                 this,
                 PendingIntent.getActivity(this, 0, completionIntent, 0),
                 PendingIntent.getActivity(this, 0, cancelIntent, 0)
