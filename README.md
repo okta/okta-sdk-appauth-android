@@ -57,15 +57,15 @@ the following contents:
 
 ```json
 {
-  "client_id": "{clientIdValue}",
-  "redirect_uri": "{redirectUriValue}",
-  "end_session_redirect_uri": "{endSessionUriValue}",
+  "client_id": "{clientId}",
+  "redirect_uri": "{redirectUri}",
+  "end_session_redirect_uri": "{endSessionUri}",
   "scopes": [
     "openid",
     "profile",
     "offline_access"
   ],
-  "issuer_uri": "https://{yourOktaDomain}.com/oauth2/default"
+  "issuer_uri": "https://{yourOktaDomain}/oauth2/default"
 }
 ```
 
