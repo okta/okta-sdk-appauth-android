@@ -2,6 +2,9 @@ package com.okta.auth;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
@@ -12,6 +15,8 @@ import android.text.TextUtils;
 import android.util.Log;
 
 import com.okta.appauth.android.AuthenticationPayload;
+import com.okta.auth.http.HttpRequest;
+import com.okta.auth.http.HttpResponse;
 
 import net.openid.appauth.AuthorizationException;
 import net.openid.appauth.AuthorizationManagementResponse;
@@ -34,6 +39,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStreamWriter;
 import java.net.HttpURLConnection;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -42,7 +48,7 @@ import static android.app.Activity.RESULT_CANCELED;
 import static com.okta.auth.OktaAuthenticationActivity.EXTRA_AUTH_URI;
 import static com.okta.auth.OktaAuthenticationActivity.EXTRA_TAB_OPTIONS;
 
-public class OktaAuthManager {
+public final class OktaAuthManager {
     private static final String TAG = OktaAuthManager.class.getSimpleName();
 
     private enum AuthState {
@@ -62,7 +68,7 @@ public class OktaAuthManager {
 
     private ExecutorService mExecutor = Executors.newSingleThreadExecutor();
 
-    private OktaClientAPI mOktaClient;
+    //private OktaClientAPI mOktaClient;
     private AuthorizationRequest mAuthRequest;
     private AuthorizationResponse mAuthResponse;
     private LoginMethod mMethod;
@@ -100,6 +106,10 @@ public class OktaAuthManager {
             mExecutor.submit(() -> {
                 try {
                     mOktaAuthAccount.obtainConfiguration();
+                    if (mMethod == LoginMethod.BROWSER_TAB && !isRedirectUrisRegistered(mOktaAuthAccount.getRedirectUri())) {
+                        mCallback.onError("No uri registered to handle redirect", null);
+                        return;
+                    }
                     mState = AuthState.DISC;
                 } catch (AuthorizationException ae) {
                     deliverResults(() -> mCallback.onError("", ae));
@@ -168,57 +178,41 @@ public class OktaAuthManager {
         }
     }
 
-    //TODO clean up http calls
     @WorkerThread
     private void codeExchange() {
         AuthorizationException exception;
-        InputStream is = null;
+        HttpResponse response = null;
         try {
-            HttpURLConnection conn = DefaultConnectionBuilder.INSTANCE.openConnection(
-                    mOktaAuthAccount.getServiceConfig().tokenEndpoint);
-            conn.setRequestMethod("POST");
-            conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
-            conn.setRequestProperty("Accept", "application/json");
-            conn.setDoOutput(true);
             TokenRequest tokenRequest = mAuthResponse.createTokenExchangeRequest();
             Map<String, String> parameters = tokenRequest.getRequestParameters();
             parameters.put(TokenRequest.PARAM_CLIENT_ID, mAuthRequest.clientId);
 
-            String queryData = UriUtil.formUrlEncode(parameters);
-            conn.setRequestProperty("Content-Length", String.valueOf(queryData.length()));
-            OutputStreamWriter wr = new OutputStreamWriter(conn.getOutputStream());
-            wr.write(queryData);
-            wr.flush();
+            response = new HttpRequest.Builder().setRequestMethod(HttpRequest.RequestMethod.POST)
+                    .setUri(mOktaAuthAccount.getServiceConfig().tokenEndpoint)
+                    .setRequestProperty("Accept", "application/json")
+                    .addPostParameters(parameters)
+                    .create()
+                    .executeRequest();
 
-            if (conn.getResponseCode() >= HttpURLConnection.HTTP_OK
-                    && conn.getResponseCode() < HttpURLConnection.HTTP_MULT_CHOICE) {
-                is = conn.getInputStream();
-            } else {
-                is = conn.getErrorStream();
-            }
-            String response = Utils.readInputStream(is);
-            JSONObject json = new JSONObject(response);
-
+            JSONObject json = response.asJson();
             if (json.has(AuthorizationException.PARAM_ERROR)) {
-                AuthorizationException ex;
-                String error = AuthorizationException.PARAM_ERROR;
                 try {
-                    error = json.getString(AuthorizationException.PARAM_ERROR);
-                    ex = AuthorizationException.fromOAuthTemplate(
+                    final String error = json.getString(AuthorizationException.PARAM_ERROR);
+                    final AuthorizationException ex = AuthorizationException.fromOAuthTemplate(
                             AuthorizationException.TokenRequestErrors.byString(error),
                             error,
                             json.optString(AuthorizationException.PARAM_ERROR_DESCRIPTION, null),
                             UriUtil.parseUriIfAvailable(
                                     json.optString(AuthorizationException.PARAM_ERROR_URI)));
+                    deliverResults(() -> mCallback.onError(error, ex));
                 } catch (JSONException jsonEx) {
-                    ex = AuthorizationException.fromTemplate(
+                    AuthorizationException.fromTemplate(
                             AuthorizationException.GeneralErrors.JSON_DESERIALIZATION_ERROR,
                             jsonEx);
+                    deliverResults(() -> mCallback.onError("error", AuthorizationException.fromTemplate(
+                            AuthorizationException.GeneralErrors.JSON_DESERIALIZATION_ERROR,
+                            jsonEx)));
                 }
-                //TODO fix
-                final String er = error;
-                final AuthorizationException finalex = ex;
-                deliverResults(() -> mCallback.onError(er, finalex));
                 return;
             }
 
@@ -263,7 +257,9 @@ public class OktaAuthManager {
                     AuthorizationException.GeneralErrors.JSON_DESERIALIZATION_ERROR, ex);
             deliverResults(() -> mCallback.onError("Failed to complete exchange request", exception));
         } finally {
-            Utils.closeQuietly(is);
+            if (response != null) {
+                response.disconnect();
+            }
         }
     }
 
@@ -273,6 +269,34 @@ public class OktaAuthManager {
         intent.putExtra(EXTRA_TAB_OPTIONS, mCustomTabColor);
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
         return intent;
+    }
+
+    private boolean isRedirectUrisRegistered(@NonNull Uri uri) {
+        PackageManager pm = mActivity.getPackageManager();
+        List<ResolveInfo> resolveInfos = null;
+        if (pm != null) {
+            Intent intent = new Intent();
+            intent.setAction(Intent.ACTION_VIEW);
+            intent.addCategory(Intent.CATEGORY_BROWSABLE);
+            intent.setData(uri);
+            resolveInfos = pm.queryIntentActivities(intent, PackageManager.GET_RESOLVED_FILTER);
+        }
+        boolean found = false;
+        if (resolveInfos != null) {
+            for (ResolveInfo info : resolveInfos) {
+                ActivityInfo activityInfo = info.activityInfo;
+                if (activityInfo.name.equals(OktaRedirectActivity.class.getCanonicalName()) &&
+                        activityInfo.packageName.equals(mActivity.getPackageName())) {
+                    found = true;
+                } else {
+                    Log.w(TAG, "Warning! Multiple applications found registered with same scheme");
+                    //Another installed app have same url scheme.
+                    //return false as if no activity found to prevent hijacking of redirect.
+                    return false;
+                }
+            }
+        }
+        return found;
     }
 
     private AuthorizationRequest createAuthRequest() {
@@ -321,7 +345,7 @@ public class OktaAuthManager {
         }
     }
 
-    public static class Builder {
+    public static final class Builder {
         private Activity mActivity;
         private OktaAuthAccount mOktaAuthAccount;
         private AuthorizationCallback mCallback;

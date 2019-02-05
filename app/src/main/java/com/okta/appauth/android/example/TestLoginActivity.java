@@ -77,13 +77,13 @@ public class TestLoginActivity extends AppCompatActivity {
         mButton = findViewById(R.id.start_button);
         mButton.setOnClickListener(v -> {
                     mOktAuth.startAuthorization();
-                    //TODO For testing.
-                    setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+                    //testing config change.
+                    //setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
                 }
         );
         mTvStatus = findViewById(R.id.status);
 
-        mOktaAccount = new OktaAuthAccount.Builder(this)
+        mOktaAccount = new OktaAuthAccount.Builder()
                 .clientId("0oaiv94wtjW7DHvvj0h7")
                 .redirectUri("com.okta.appauth.android.example:/callback")
                 .endSessionRedirectUri("com.okta.appauth.android.example:/logout")
@@ -91,7 +91,7 @@ public class TestLoginActivity extends AppCompatActivity {
                 .discoveryUri("https://dev-486177.oktapreview.com/oauth2/default")
                 .create();
 
-        mOktaAccountWithRes = new OktaAuthAccount.Builder(this).withResId(R.raw.okta_app_auth_config);
+        mOktaAccountWithRes = new OktaAuthAccount.Builder().withResId(this, R.raw.okta_app_auth_config).create();
 
         mOktAuth = new OktaAuthManager.Builder(this).withCallback(new AuthorizationCallback() {
             @Override
@@ -118,7 +118,11 @@ public class TestLoginActivity extends AppCompatActivity {
             @Override
             public void onError(String msg, AuthorizationException error) {
                 Log.d("TestLoginActivity", error.errorDescription + "onError" + Thread.currentThread().toString());
-                mTvStatus.setText(error.errorDescription);
+                if (error != null) {
+                    mTvStatus.setText(error.errorDescription);
+                } else {
+                    mTvStatus.setText(msg);
+                }
             }
         }).withAccount(mOktaAccount)
                 .withTabColor(getColorCompat(R.color.colorPrimary))
