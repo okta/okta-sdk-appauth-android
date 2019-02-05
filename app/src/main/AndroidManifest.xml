@@ -28,8 +28,9 @@
             tools:ignore="GoogleAppIndexingWarning">
 
         <!-- Main Activity android:name=".LoginActivity"-->
+        <!-- Main Activity android:name=".StartActivity"-->
         <activity
-                android:name=".StartActivity"
+                android:name=".TestLoginActivity"
                 android:label="@string/app_name_short"
                 android:launchMode="singleInstance"
                 android:windowSoftInputMode="stateHidden">

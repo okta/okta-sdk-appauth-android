@@ -1,26 +1,25 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-          package="com.okta.appauth.android">
+    package="com.okta.appauth.android">
 
     <application>
-        <activity android:name=".OktaManagementActivity"
-                  android:exported="false"
-                  android:theme="@android:style/Theme.Translucent.NoTitleBar"
-                  android:launchMode="singleTask"/>
+        <activity
+            android:name="com.okta.auth.OktaAuthenticationActivity"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
 
-        <activity android:name="com.okta.openid.appauth.RedirectUriReceiverActivity"
-                  android:exported="true">
+        <activity
+            android:name="com.okta.auth.OktaRedirectActivity"
+            android:exported="true">
             <intent-filter>
-                <action android:name="android.intent.action.VIEW"/>
-                <category android:name="android.intent.category.DEFAULT"/>
-                <category android:name="android.intent.category.BROWSABLE"/>
-                <data android:scheme="${appAuthRedirectScheme}"/>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data android:scheme="${appAuthRedirectScheme}" />
             </intent-filter>
         </activity>
-        <activity android:name="com.okta.openid.appauth.AuthorizationManagementActivity"
-                  android:exported="false"
-                  android:theme="@android:style/Theme.Translucent.NoTitleBar"
-                  android:launchMode="singleTask"/>
-
     </application>
 
 </manifest>
