@@ -1,6 +1,6 @@
 apply plugin: "com.android.application"
 apply from: "${rootDir}/gradle/android-common.gradle"
-//apply from: "${rootDir}/gradle/style.gradle"
+apply from: "${rootDir}/gradle/style.gradle"
 
 android {
     defaultConfig {
