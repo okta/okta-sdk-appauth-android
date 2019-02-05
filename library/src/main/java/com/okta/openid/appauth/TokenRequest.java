@@ -65,7 +65,7 @@ public class TokenRequest {
     @VisibleForTesting
     static final String KEY_ADDITIONAL_PARAMETERS = "additionalParameters";
 
-    static final String PARAM_CLIENT_ID = "client_id";
+    public static final String PARAM_CLIENT_ID = "client_id";
 
     @VisibleForTesting
     static final String PARAM_CODE = "code";

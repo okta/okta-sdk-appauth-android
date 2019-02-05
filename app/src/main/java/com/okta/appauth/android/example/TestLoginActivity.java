@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Okta, Inc. and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Okta, Inc. and/or its affiliates. All rights reserved.
  * The Okta software accompanied by this notice is provided pursuant to the Apache License,
  * Version 2.0 (the "License.")
  *
@@ -33,12 +33,10 @@ import com.okta.auth.AuthorizationCallback;
 import com.okta.auth.OktaAuthManager;
 import com.okta.auth.OktaAuthAccount;
 import com.okta.auth.OktaClientAPI;
+import com.okta.openid.appauth.AuthorizationException;
+import com.okta.openid.appauth.AuthorizationResponse;
+import com.okta.openid.appauth.TokenResponse;
 
-import net.openid.appauth.AuthorizationException;
-import net.openid.appauth.AuthorizationResponse;
-import net.openid.appauth.AuthorizationService;
-import net.openid.appauth.NoClientAuthentication;
-import net.openid.appauth.TokenResponse;
 
 import org.json.JSONObject;
 

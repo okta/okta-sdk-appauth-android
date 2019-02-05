@@ -37,7 +37,7 @@ import java.util.List;
  * @see "OpenID Connect Core ID Token Validation, Section 3.1.3.7
  * <http://openid.net/specs/openid-connect-core-1_0.html#IDTokenValidation>"
  */
-class IdToken {
+public class IdToken {
 
     private static final String KEY_ISSUER = "iss";
     private static final String KEY_SUBJECT = "sub";
@@ -75,7 +75,7 @@ class IdToken {
         return new JSONObject(jsonString);
     }
 
-    static IdToken from(String token) throws JSONException, IdTokenException {
+    public static IdToken from(String token) throws JSONException, IdTokenException {
         String[] sections = token.split("\\.");
 
         if (sections.length <= 1) {
@@ -109,7 +109,7 @@ class IdToken {
         );
     }
 
-    void validate(@NonNull TokenRequest tokenRequest, Clock clock) throws AuthorizationException {
+    public void validate(@NonNull TokenRequest tokenRequest, Clock clock) throws AuthorizationException {
         // OpenID Connect Core Section 3.1.3.7. rule #1
         // Not enforced: AppAuth does not support JWT encryption.
 
@@ -201,7 +201,7 @@ class IdToken {
         // max_age is not directly supported by AppAuth.
     }
 
-    static class IdTokenException extends Exception {
+    public static class IdTokenException extends Exception {
         IdTokenException(String message) {
             super(message);
         }

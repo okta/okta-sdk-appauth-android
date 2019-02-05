@@ -1,3 +1,17 @@
+/*
+ * Copyright (c) 2019, Okta, Inc. and/or its affiliates. All rights reserved.
+ * The Okta software accompanied by this notice is provided pursuant to the Apache License,
+ * Version 2.0 (the "License.")
+ *
+ * You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0.
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *
+ * See the License for the specific language governing permissions and limitations under the
+ * License.
+ */
 package com.okta.auth;
 
 import android.app.Activity;
@@ -17,20 +31,17 @@ import android.util.Log;
 import com.okta.appauth.android.AuthenticationPayload;
 import com.okta.auth.http.HttpRequest;
 import com.okta.auth.http.HttpResponse;
-
-import net.openid.appauth.AuthorizationException;
-import net.openid.appauth.AuthorizationManagementResponse;
-import net.openid.appauth.AuthorizationRequest;
-import net.openid.appauth.AuthorizationResponse;
-import net.openid.appauth.IdToken;
-import net.openid.appauth.ResponseTypeValues;
-import net.openid.appauth.SystemClock;
-import net.openid.appauth.TokenRequest;
-import net.openid.appauth.TokenResponse;
-import net.openid.appauth.Utils;
-import net.openid.appauth.connectivity.DefaultConnectionBuilder;
-import net.openid.appauth.internal.Logger;
-import net.openid.appauth.internal.UriUtil;
+import com.okta.openid.appauth.AuthorizationException;
+import com.okta.openid.appauth.AuthorizationManagementResponse;
+import com.okta.openid.appauth.AuthorizationRequest;
+import com.okta.openid.appauth.AuthorizationResponse;
+import com.okta.openid.appauth.IdToken;
+import com.okta.openid.appauth.ResponseTypeValues;
+import com.okta.openid.appauth.SystemClock;
+import com.okta.openid.appauth.TokenRequest;
+import com.okta.openid.appauth.TokenResponse;
+import com.okta.openid.appauth.internal.Logger;
+import com.okta.openid.appauth.internal.UriUtil;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -68,7 +79,6 @@ public final class OktaAuthManager {
 
     private ExecutorService mExecutor = Executors.newSingleThreadExecutor();
 
-    //private OktaClientAPI mOktaClient;
     private AuthorizationRequest mAuthRequest;
     private AuthorizationResponse mAuthResponse;
     private LoginMethod mMethod;

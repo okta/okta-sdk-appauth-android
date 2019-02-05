@@ -17,7 +17,7 @@ package com.okta.openid.appauth;
 /**
  * Default implementation of clock which wraps `System.currentTimeMillis()`.
  */
-class SystemClock implements Clock {
+public class SystemClock implements Clock {
     public static final SystemClock INSTANCE = new SystemClock();
 
     private SystemClock() {}

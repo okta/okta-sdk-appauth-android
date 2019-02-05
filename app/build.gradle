@@ -1,11 +1,10 @@
 apply plugin: "com.android.application"
 apply from: "${rootDir}/gradle/android-common.gradle"
-apply from: "${rootDir}/gradle/style.gradle"
+//apply from: "${rootDir}/gradle/style.gradle"
 
 android {
     defaultConfig {
         applicationId "com.okta.appauth.android.example"
-        project.archivesBaseName = "appauth-android-example"
         vectorDrawables.useSupportLibrary = true
 
         // Make sure this is consistent with the redirect URI used in

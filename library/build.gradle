@@ -24,7 +24,6 @@ android {
         main {
             java {
                 srcDir "src/main/java"
-                srcDir "${rootDir.absolutePath}/app-auth/AppAuth-Android/library/java"
             }
         }
         test {

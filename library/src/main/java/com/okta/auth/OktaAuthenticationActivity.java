@@ -1,3 +1,17 @@
+/*
+ * Copyright (c) 2019, Okta, Inc. and/or its affiliates. All rights reserved.
+ * The Okta software accompanied by this notice is provided pursuant to the Apache License,
+ * Version 2.0 (the "License.")
+ *
+ * You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0.
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *
+ * See the License for the specific language governing permissions and limitations under the
+ * License.
+ */
 package com.okta.auth;
 
 import android.app.Activity;
@@ -7,21 +21,13 @@ import android.os.Bundle;
 import android.support.annotation.WorkerThread;
 import android.support.customtabs.CustomTabsIntent;
 
-import net.openid.appauth.AuthorizationException;
-import net.openid.appauth.AuthorizationManagementRequest;
-import net.openid.appauth.browser.AnyBrowserMatcher;
-import net.openid.appauth.browser.BrowserDescriptor;
-import net.openid.appauth.browser.BrowserMatcher;
-import net.openid.appauth.browser.BrowserSelector;
-import net.openid.appauth.browser.BrowserWhitelist;
-import net.openid.appauth.browser.CustomTabManager;
-import net.openid.appauth.browser.VersionedBrowserMatcher;
-import net.openid.appauth.internal.Logger;
-
-import org.json.JSONException;
+import com.okta.openid.appauth.browser.BrowserDescriptor;
+import com.okta.openid.appauth.browser.BrowserSelector;
+import com.okta.openid.appauth.browser.BrowserWhitelist;
+import com.okta.openid.appauth.browser.CustomTabManager;
+import com.okta.openid.appauth.browser.VersionedBrowserMatcher;
 
 public class OktaAuthenticationActivity extends Activity {
-    //static final String EXTRA_AUTH_INTENT = "com.okta.auth.AUTH_INTENT";
     static final String EXTRA_AUTH_STARTED = "com.okta.auth.AUTH_STARTED";
     static final String EXTRA_AUTH_URI = "com.okta.auth.AUTH_URI";
     static final String EXTRA_TAB_OPTIONS = "com.okta.auth.TAB_OPTIONS";
