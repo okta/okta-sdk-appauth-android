@@ -40,7 +40,7 @@ ext {
     // SDK dependency versions
     appAuthVersion = "0.7.1"
     okioVersion = "1.13.0"
-    bintrayVersion = "1.7.3"
+    bintrayVersion = "1.8.4"
     gradlePluginVersion = "1.5"
 
     // Example app dependency versions
