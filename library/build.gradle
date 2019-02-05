@@ -54,7 +54,6 @@ buildscript {
 dependencies {
     //used as a provider of manifest for app-auth
     //should be removed when singout functionality is merged
-    implementation project(":appauthlibrary")
     implementation "com.squareup.okio:okio:${rootProject.okioVersion}"
     implementation "com.android.support:customtabs:${rootProject.browserVersion}"
     testImplementation "com.squareup.okhttp3:okhttp-tls:${rootProject.okhttpVersion}"
