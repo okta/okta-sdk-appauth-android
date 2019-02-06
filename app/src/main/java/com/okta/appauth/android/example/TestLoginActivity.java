@@ -60,7 +60,6 @@ public class TestLoginActivity extends AppCompatActivity {
 
     private OktaAuthManager mOktAuth;
     private OktaAuthAccount mOktaAccount;
-    private OktaAuthAccount mOktaAccountWithRes;
     private OktaClientAPI mClient;
     private TextView mTvStatus;
     private Button mButton;
@@ -88,8 +87,6 @@ public class TestLoginActivity extends AppCompatActivity {
                 .scopes("openid", "profile", "offline_access")
                 .discoveryUri("https://dev-486177.oktapreview.com/oauth2/default")
                 .create();
-
-        mOktaAccountWithRes = new OktaAuthAccount.Builder().withResId(this, R.raw.okta_app_auth_config).create();
 
         mOktAuth = new OktaAuthManager.Builder(this).withCallback(new AuthorizationCallback() {
             @Override

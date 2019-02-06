@@ -75,6 +75,8 @@ public final class OktaAuthManager {
     private OktaAuthAccount mOktaAuthAccount;
     private AuthorizationCallback mCallback;
     private AuthenticationPayload mPayload;
+    private String mUsername;
+    private String mPassword;
     private int mCustomTabColor;
 
     private ExecutorService mExecutor = Executors.newSingleThreadExecutor();
@@ -95,6 +97,8 @@ public final class OktaAuthManager {
         mPayload = builder.mPayload;
         mMethod = builder.mMethod;
         mState = AuthState.INIT;
+        mUsername = builder.mUsername;
+        mPassword = builder.mPassword;
         mMainHandler = new Handler(Looper.getMainLooper());
     }
 
@@ -361,6 +365,8 @@ public final class OktaAuthManager {
         private AuthorizationCallback mCallback;
         private AuthenticationPayload mPayload;
         private int mCustomTabColor;
+        private String mUsername;
+        private String mPassword;
         private LoginMethod mMethod = LoginMethod.BROWSER_TAB;
 
         public Builder(@NonNull Activity activity) {
@@ -393,6 +399,12 @@ public final class OktaAuthManager {
 
         public Builder withMethod(@NonNull LoginMethod method) {
             mMethod = method;
+            return this;
+        }
+
+        public Builder withCredential(@NonNull String username, @NonNull String password) {
+            mUsername = username;
+            mPassword = password;
             return this;
         }
     }
