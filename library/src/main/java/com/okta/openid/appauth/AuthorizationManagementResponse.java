@@ -36,8 +36,7 @@ public abstract class AuthorizationManagementResponse {
             return new AuthorizationResponse.Builder((AuthorizationRequest) request)
                 .fromUri(uri)
                 .build();
-        }
-        if (request instanceof EndSessionRequest) {
+        } else if (request instanceof EndSessionRequest) {
             return EndSessionResponse.fromRequestAndUri((EndSessionRequest)request,uri);
         }
         throw new IllegalArgumentException("Malformed request or uri");
