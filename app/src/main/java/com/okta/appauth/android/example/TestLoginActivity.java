@@ -78,6 +78,7 @@ public class TestLoginActivity extends AppCompatActivity {
                         public void onSuccess(OktaClientAPI clientAPI) {
                             Log.d("TestLoginActivity", "SUCCESS");
                             mClient = clientAPI;
+                            Log.d("FEI", mClient.debugToken());
                             mTvStatus.setText("authentication success");
                             mButton.setText("Get profile");
                             mButton.setOnClickListener(v -> getProfile());
