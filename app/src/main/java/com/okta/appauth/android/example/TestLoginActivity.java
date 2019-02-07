@@ -73,7 +73,32 @@ public class TestLoginActivity extends AppCompatActivity {
         setContentView(R.layout.test_activity_login);
         mButton = findViewById(R.id.start_button);
         mButton.setOnClickListener(v -> {
-                    mOktAuth.startAuthorization();
+                    mOktAuth.startAuthorization(new AuthorizationCallback() {
+                        @Override
+                        public void onSuccess(OktaClientAPI clientAPI) {
+                            Log.d("TestLoginActivity", "SUCCESS");
+                            mClient = clientAPI;
+                            mTvStatus.setText("authentication success");
+                            mButton.setText("Get profile");
+                            mButton.setOnClickListener(v -> getProfile());
+                        }
+
+                        @Override
+                        public void onCancel() {
+                            Log.d("TestLoginActivity", "CANCELED!");
+                            mTvStatus.setText("canceled");
+                        }
+
+                        @Override
+                        public void onError(String msg, AuthorizationException error) {
+                            Log.d("TestLoginActivity", error.errorDescription + "onError" + Thread.currentThread().toString());
+                            if (error != null) {
+                                mTvStatus.setText(error.errorDescription);
+                            } else {
+                                mTvStatus.setText(msg);
+                            }
+                        }
+                    });
                     //testing config change.
                     //setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
                 }
@@ -88,38 +113,8 @@ public class TestLoginActivity extends AppCompatActivity {
                 .discoveryUri("https://dev-486177.oktapreview.com/oauth2/default")
                 .create();
 
-        mOktAuth = new OktaAuthManager.Builder(this).withCallback(new AuthorizationCallback() {
-            @Override
-            public void onSuccess(OktaClientAPI clientAPI) {
-                Log.d("TestLoginActivity", "SUCCESS");
-                mClient = clientAPI;
-                mTvStatus.setText("authentication success");
-                mButton.setText("Get profile");
-                mButton.setOnClickListener(v -> getProfile());
-            }
-
-            @Override
-            public void onStatus(String status) {
-                Log.d("TestLoginActivity", status);
-                mTvStatus.setText(status);
-            }
-
-            @Override
-            public void onCancel() {
-                Log.d("TestLoginActivity", "CANCELED!");
-                mTvStatus.setText("canceled");
-            }
-
-            @Override
-            public void onError(String msg, AuthorizationException error) {
-                Log.d("TestLoginActivity", error.errorDescription + "onError" + Thread.currentThread().toString());
-                if (error != null) {
-                    mTvStatus.setText(error.errorDescription);
-                } else {
-                    mTvStatus.setText(msg);
-                }
-            }
-        }).withAccount(mOktaAccount)
+        mOktAuth = new OktaAuthManager.Builder(this)
+                .withAccount(mOktaAccount)
                 .withTabColor(getColorCompat(R.color.colorPrimary))
                 .create();
 
