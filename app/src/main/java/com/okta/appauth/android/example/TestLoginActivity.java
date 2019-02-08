@@ -23,7 +23,6 @@ import android.os.Bundle;
 import android.support.annotation.ColorRes;
 import android.support.annotation.MainThread;
 import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
@@ -42,15 +41,8 @@ import com.okta.openid.appauth.TokenResponse;
 
 import org.json.JSONObject;
 
-import java.io.IOException;
-import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.nio.charset.Charset;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-
-import okio.Okio;
 
 /**
  * Example Login Activity where authentication takes place.
@@ -78,13 +70,23 @@ public class TestLoginActivity extends AppCompatActivity {
         mSignOut = findViewById(R.id.logout_button);
         mSignOut.setOnClickListener(v -> {
             if (mClient != null) {
-                mClient.logOut();
+                mOktAuth.logOut(this, new OktaClientAPI.RequestCallback<Boolean, AuthorizationException>() {
+                    @Override
+                    public void onSuccess(@NonNull Boolean result) {
+
+                    }
+
+                    @Override
+                    public void onError(String error, AuthorizationException exception) {
+
+                    }
+                });
             }
         });
 
 
         mButton.setOnClickListener(v -> {
-                    mOktAuth.startAuthorization(new AuthorizationCallback() {
+                    mOktAuth.startAuthorization(this, new AuthorizationCallback() {
                         @Override
                         public void onSuccess(OktaClientAPI clientAPI) {
                             Log.d("TestLoginActivity", "SUCCESS");
@@ -125,7 +127,7 @@ public class TestLoginActivity extends AppCompatActivity {
                 .discoveryUri("https://dev-486177.oktapreview.com/oauth2/default")
                 .create();
 
-        mOktAuth = new OktaAuthManager.Builder(this)
+        mOktAuth = new OktaAuthManager.Builder()
                 .withAccount(mOktaAccount)
                 .withTabColor(getColorCompat(R.color.colorPrimary))
                 .create();
@@ -153,9 +155,9 @@ public class TestLoginActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         Log.d(TAG, "onDestroy");
-        if (mOktAuth != null) {
-            mOktAuth.stop();
-        }
+//        if (mOktAuth != null) {
+//            mOktAuth.stop();
+//        }
         if (mClient != null) {
             mClient.stop();
         }
@@ -174,7 +176,7 @@ public class TestLoginActivity extends AppCompatActivity {
     private ExecutorService mExecutor = Executors.newSingleThreadExecutor();
 
     private void getProfile() {
-        mClient.getUserProfile(new OktaClientAPI.ResultCallback<JSONObject, AuthorizationException>() {
+        mClient.getUserProfile(new OktaClientAPI.RequestCallback<JSONObject, AuthorizationException>() {
             @Override
             public void onSuccess(@NonNull JSONObject result) {
                 mTvStatus.setText(result.toString());

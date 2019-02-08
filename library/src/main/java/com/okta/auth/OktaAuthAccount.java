@@ -28,6 +28,7 @@ import com.okta.auth.http.HttpResponse;
 import com.okta.openid.appauth.AuthorizationException;
 import com.okta.openid.appauth.AuthorizationServiceConfiguration;
 import com.okta.openid.appauth.AuthorizationServiceDiscovery;
+import com.okta.openid.appauth.TokenResponse;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -58,6 +59,9 @@ public class OktaAuthAccount {
     private Uri mEndSessionRedirectUri;
     private Uri mDiscoveryUri;
     private Set<String> mScopes;
+
+    OktaAuthManager.LoginMethod mLoginMethod;
+    TokenResponse mTokenResponse;
 
     private static final String OIDC_DISCOVERY = ".well-known/openid-configuration";
 
@@ -91,13 +95,19 @@ public class OktaAuthAccount {
         return mScopes;
     }
 
-    boolean isConfigured() {
+    boolean haveConfiguration() {
         return mServiceConfig != null;
     }
 
     AuthorizationServiceConfiguration getServiceConfig() {
         return mServiceConfig;
     }
+
+
+    public boolean isLoggedIn() {
+        return mTokenResponse.accessToken != null || mTokenResponse.idToken != null;
+    }
+
 
     @WorkerThread
     void obtainConfiguration() throws AuthorizationException {

@@ -14,13 +14,21 @@
  */
 package com.okta.auth;
 
+import android.app.Activity;
+import android.content.Intent;
+import android.net.Uri;
+import android.support.annotation.AnyThread;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.annotation.WorkerThread;
-import android.util.Log;
+import android.text.TextUtils;
 
 import com.okta.auth.http.HttpRequest;
 import com.okta.auth.http.HttpResponse;
 import com.okta.openid.appauth.AuthorizationException;
+import com.okta.openid.appauth.AuthorizationRequest;
+import com.okta.openid.appauth.EndSessionRequest;
+import com.okta.openid.appauth.ResponseTypeValues;
 import com.okta.openid.appauth.TokenResponse;
 
 
@@ -28,45 +36,61 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
-import java.net.MalformedURLException;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+
+import static com.okta.auth.OktaAuthenticationActivity.EXTRA_AUTH_URI;
+import static com.okta.auth.OktaAuthenticationActivity.EXTRA_TAB_OPTIONS;
 
 //Client API for a client that is already logged in (authenticated).
 public class OktaClientAPI {
 
     private OktaAuthAccount mOktaAuthAccount;
-    private TokenResponse mTokenResponse;
     private final MainThreadExecutor mMainThread = new MainThreadExecutor();
     private final ExecutorService mExecutor = Executors.newSingleThreadExecutor();
 
-    public interface ResultCallback<T, U extends Exception> {
+    public interface RequestCallback<T, U extends Exception> {
         public void onSuccess(@NonNull T result);
 
         public void onError(String error, U exception);
     }
 
-    OktaClientAPI(OktaAuthAccount account, TokenResponse response) {
+    OktaClientAPI(OktaAuthAccount account) {
         mOktaAuthAccount = account;
-        mTokenResponse = response;
     }
 
     @WorkerThread
     public JSONObject getUserProfile() throws IOException, JSONException {
         HttpResponse response = new HttpRequest.Builder().setRequestMethod(HttpRequest.RequestMethod.POST)
                 .setUri(mOktaAuthAccount.getServiceConfig().discoveryDoc.getUserinfoEndpoint())
-                .setRequestProperty("Authorization", "Bearer " + mTokenResponse.accessToken)
+                .setRequestProperty("Authorization", "Bearer " + mOktaAuthAccount.mTokenResponse.accessToken)
                 .create()
                 .executeRequest();
         return response.asJson();
     }
 
-    public void getUserProfile(final ResultCallback<JSONObject, AuthorizationException> cb) {
+    @AnyThread
+    public void getUserProfile(@NonNull final RequestCallback<JSONObject, AuthorizationException> cb) {
+        performAuthorizedRequest(mOktaAuthAccount.getServiceConfig().discoveryDoc.getUserinfoEndpoint(), cb,
+                null, null, HttpRequest.RequestMethod.POST);
+    }
+
+    public void performAuthorizedRequest(@NonNull Uri uri, @NonNull final RequestCallback<JSONObject, AuthorizationException> cb,
+                                         @Nullable Map<String, String> properties, @Nullable Map<String, String> postParameters,
+                                         @NonNull HttpRequest.RequestMethod method) {
         mExecutor.submit(() -> {
             try {
-                HttpResponse response = new HttpRequest.Builder().setRequestMethod(HttpRequest.RequestMethod.POST)
-                        .setUri(mOktaAuthAccount.getServiceConfig().discoveryDoc.getUserinfoEndpoint())
-                        .setRequestProperty("Authorization", "Bearer " + mTokenResponse.accessToken)
+                HttpRequest.Builder builder = new HttpRequest.Builder();
+                if (postParameters != null) {
+                    builder.setPostParameters(postParameters);
+                }
+                if (properties != null) {
+                    builder.setRequestProperties(properties);
+                }
+                HttpResponse response = builder.setRequestMethod(method)
+                        .setUri(uri)
+                        .setRequestProperty("Authorization", "Bearer " + mOktaAuthAccount.mTokenResponse.accessToken)
                         .create()
                         .executeRequest();
                 final JSONObject result = response.asJson();
@@ -83,14 +107,9 @@ public class OktaClientAPI {
         });
     }
 
-    @WorkerThread
-    public void logOut() {
-
-    }
-
+    @AnyThread
     public void stop() {
         mMainThread.shutdown();
         mExecutor.shutdownNow();
     }
-
 }

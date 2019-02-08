@@ -17,6 +17,8 @@ package com.okta.auth.http;
 import android.net.Uri;
 import android.os.Build;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
+import android.support.annotation.RestrictTo;
 
 import com.okta.appauth.android.BuildConfig;
 import com.okta.openid.appauth.Preconditions;
@@ -31,6 +33,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import static android.support.annotation.RestrictTo.Scope.LIBRARY_GROUP;
+
+@RestrictTo(LIBRARY_GROUP)
 public final class HttpRequest {
     private static final String DEFAULT_ENCODING = "UTF-8";
     private static final String CONTENT_TYPE = "Content-Type";
@@ -203,7 +208,7 @@ public final class HttpRequest {
             return this;
         }
 
-        public Builder addPostParameter(@NonNull String key, @NonNull String value) {
+        public Builder setPostParameter(@NonNull String key, @NonNull String value) {
             if (mPostParameters == null) {
                 mPostParameters = new HashMap<>();
             }
@@ -211,7 +216,7 @@ public final class HttpRequest {
             return this;
         }
 
-        public Builder addPostParameters(@NonNull Map<String, String> map) {
+        public Builder setPostParameters(@NonNull Map<String, String> map) {
             if (mPostParameters == null) {
                 mPostParameters = new HashMap<>();
             }

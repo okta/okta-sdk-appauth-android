@@ -13,7 +13,7 @@ import java.util.concurrent.TimeUnit;
  * Executor Service that that runs tasks on ui thread.
  * Can't be shut down for obvious reasons.
  */
-public class MainThreadExecutor extends AbstractExecutorService {
+class MainThreadExecutor extends AbstractExecutorService {
 
     private final Handler mHandler;
 
