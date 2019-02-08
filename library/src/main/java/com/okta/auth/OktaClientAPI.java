@@ -20,6 +20,7 @@ import android.util.Log;
 
 import com.okta.auth.http.HttpRequest;
 import com.okta.auth.http.HttpResponse;
+import com.okta.openid.appauth.AuthorizationException;
 import com.okta.openid.appauth.TokenResponse;
 
 
@@ -28,11 +29,22 @@ import org.json.JSONObject;
 
 import java.io.IOException;
 import java.net.MalformedURLException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 //Client API for a client that is already logged in (authenticated).
 public class OktaClientAPI {
+
     private OktaAuthAccount mOktaAuthAccount;
     private TokenResponse mTokenResponse;
+    private final MainThreadExecutor mMainThread = new MainThreadExecutor();
+    private final ExecutorService mExecutor = Executors.newSingleThreadExecutor();
+
+    public interface ResultCallback<T, U extends Exception> {
+        public void onSuccess(@NonNull T result);
+
+        public void onError(String error, U exception);
+    }
 
     OktaClientAPI(OktaAuthAccount account, TokenResponse response) {
         mOktaAuthAccount = account;
@@ -48,4 +60,37 @@ public class OktaClientAPI {
                 .executeRequest();
         return response.asJson();
     }
+
+    public void getUserProfile(final ResultCallback<JSONObject, AuthorizationException> cb) {
+        mExecutor.submit(() -> {
+            try {
+                HttpResponse response = new HttpRequest.Builder().setRequestMethod(HttpRequest.RequestMethod.POST)
+                        .setUri(mOktaAuthAccount.getServiceConfig().discoveryDoc.getUserinfoEndpoint())
+                        .setRequestProperty("Authorization", "Bearer " + mTokenResponse.accessToken)
+                        .create()
+                        .executeRequest();
+                final JSONObject result = response.asJson();
+                mMainThread.execute(() -> cb.onSuccess(result));
+            } catch (IOException io) {
+                AuthorizationException e = AuthorizationException.fromTemplate(
+                        AuthorizationException.GeneralErrors.NETWORK_ERROR, io);
+                mMainThread.execute(() -> cb.onError("", e));
+            } catch (JSONException je) {
+                AuthorizationException e = AuthorizationException.fromTemplate(
+                        AuthorizationException.GeneralErrors.JSON_DESERIALIZATION_ERROR, je);
+                mMainThread.execute(() -> cb.onError("", e));
+            }
+        });
+    }
+
+    @WorkerThread
+    public void logOut() {
+
+    }
+
+    public void stop() {
+        mMainThread.shutdown();
+        mExecutor.shutdownNow();
+    }
+
 }

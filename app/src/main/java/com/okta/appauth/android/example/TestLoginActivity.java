@@ -22,10 +22,12 @@ import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.ColorRes;
 import android.support.annotation.MainThread;
+import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 
@@ -63,6 +65,7 @@ public class TestLoginActivity extends AppCompatActivity {
     private OktaClientAPI mClient;
     private TextView mTvStatus;
     private Button mButton;
+    private Button mSignOut;
     private AuthorizationResponse mResponse;
     private TokenResponse mToken;
 
@@ -72,16 +75,24 @@ public class TestLoginActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.test_activity_login);
         mButton = findViewById(R.id.start_button);
+        mSignOut = findViewById(R.id.logout_button);
+        mSignOut.setOnClickListener(v -> {
+            if (mClient != null) {
+                mClient.logOut();
+            }
+        });
+
+
         mButton.setOnClickListener(v -> {
                     mOktAuth.startAuthorization(new AuthorizationCallback() {
                         @Override
                         public void onSuccess(OktaClientAPI clientAPI) {
                             Log.d("TestLoginActivity", "SUCCESS");
                             mClient = clientAPI;
-                            Log.d("FEI", mClient.debugToken());
                             mTvStatus.setText("authentication success");
                             mButton.setText("Get profile");
                             mButton.setOnClickListener(v -> getProfile());
+                            mSignOut.setVisibility(View.VISIBLE);
                         }
 
                         @Override
@@ -101,7 +112,7 @@ public class TestLoginActivity extends AppCompatActivity {
                         }
                     });
                     //testing config change.
-                    //setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+                    setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
                 }
         );
         mTvStatus = findViewById(R.id.status);
@@ -143,7 +154,10 @@ public class TestLoginActivity extends AppCompatActivity {
     protected void onDestroy() {
         Log.d(TAG, "onDestroy");
         if (mOktAuth != null) {
-            mOktAuth.onDestroy();
+            mOktAuth.stop();
+        }
+        if (mClient != null) {
+            mClient.stop();
         }
         super.onDestroy();
     }
@@ -160,6 +174,19 @@ public class TestLoginActivity extends AppCompatActivity {
     private ExecutorService mExecutor = Executors.newSingleThreadExecutor();
 
     private void getProfile() {
+        mClient.getUserProfile(new OktaClientAPI.ResultCallback<JSONObject, AuthorizationException>() {
+            @Override
+            public void onSuccess(@NonNull JSONObject result) {
+                mTvStatus.setText(result.toString());
+            }
+
+            @Override
+            public void onError(String error, AuthorizationException exception) {
+                Log.d(TAG, error, exception);
+            }
+        });
+
+/*
         mExecutor.submit(() -> {
             try {
                 JSONObject jsonObject = mClient.getUserProfile();
@@ -170,6 +197,7 @@ public class TestLoginActivity extends AppCompatActivity {
                 Log.d(TAG, "", ex);
             }
         });
+        */
     }
 
     @TargetApi(Build.VERSION_CODES.M)

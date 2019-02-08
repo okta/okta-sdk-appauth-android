@@ -66,6 +66,13 @@
                     android:layout_height="wrap_content"
                     android:text="Obtain configuration" />
 
+                <Button
+                    android:id="@+id/logout_button"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Sign out"
+                    android:visibility="gone"/>
+
                 <TextView
                     android:id="@+id/status"
                     android:layout_width="match_parent"
