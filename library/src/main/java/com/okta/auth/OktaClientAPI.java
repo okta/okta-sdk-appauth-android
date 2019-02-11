@@ -14,23 +14,15 @@
  */
 package com.okta.auth;
 
-import android.app.Activity;
-import android.content.Intent;
 import android.net.Uri;
 import android.support.annotation.AnyThread;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.annotation.WorkerThread;
-import android.text.TextUtils;
 
 import com.okta.auth.http.HttpRequest;
 import com.okta.auth.http.HttpResponse;
 import com.okta.openid.appauth.AuthorizationException;
-import com.okta.openid.appauth.AuthorizationRequest;
-import com.okta.openid.appauth.EndSessionRequest;
-import com.okta.openid.appauth.ResponseTypeValues;
-import com.okta.openid.appauth.TokenResponse;
-
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -40,21 +32,12 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static com.okta.auth.OktaAuthenticationActivity.EXTRA_AUTH_URI;
-import static com.okta.auth.OktaAuthenticationActivity.EXTRA_TAB_OPTIONS;
-
 //Client API for a client that is already logged in (authenticated).
 public class OktaClientAPI {
 
     private OktaAuthAccount mOktaAuthAccount;
     private final MainThreadExecutor mMainThread = new MainThreadExecutor();
     private final ExecutorService mExecutor = Executors.newSingleThreadExecutor();
-
-    public interface RequestCallback<T, U extends Exception> {
-        public void onSuccess(@NonNull T result);
-
-        public void onError(String error, U exception);
-    }
 
     OktaClientAPI(OktaAuthAccount account) {
         mOktaAuthAccount = account;
@@ -108,7 +91,7 @@ public class OktaClientAPI {
     }
 
     @AnyThread
-    public void stop() {
+    void stop() {
         mMainThread.shutdown();
         mExecutor.shutdownNow();
     }

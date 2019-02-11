@@ -5,7 +5,7 @@ import android.support.annotation.Nullable;
 
 import com.okta.openid.appauth.AuthorizationException;
 
-public interface AuthorizationCallback {
+public interface ResultCallback {
     public void onSuccess(@NonNull OktaClientAPI clientAPI);
 
     public void onCancel();

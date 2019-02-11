@@ -19,6 +19,7 @@ import android.os.Build;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.annotation.RestrictTo;
+import android.support.annotation.WorkerThread;
 
 import com.okta.appauth.android.BuildConfig;
 import com.okta.openid.appauth.Preconditions;
@@ -68,6 +69,7 @@ public final class HttpRequest {
         mUri = builder.mUri;
     }
 
+    @WorkerThread
     public HttpResponse executeRequest() throws IOException {
         HttpURLConnection connection = openConnection();
         boolean keepOpen = false;
