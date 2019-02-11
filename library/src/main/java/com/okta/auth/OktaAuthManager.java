@@ -14,8 +14,11 @@
  */
 package com.okta.auth;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
@@ -24,6 +27,7 @@ import android.os.Bundle;
 import android.support.annotation.AnyThread;
 import android.support.annotation.ColorInt;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.annotation.WorkerThread;
 import android.text.TextUtils;
 import android.util.Log;
@@ -48,6 +52,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.lang.ref.WeakReference;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -61,17 +66,23 @@ import static com.okta.openid.appauth.AuthorizationException.RegistrationRequest
 
 public final class OktaAuthManager {
     private static final String TAG = OktaAuthManager.class.getSimpleName();
+    private static final String AUTH_REQUEST_PREF = OktaAuthManager.class.getCanonicalName() + ".AuthRequest";
+    private static final String AUTH_RESPONSE_PREF = OktaAuthManager.class.getCanonicalName() + ".AuthResponse";
 
-    private enum AuthState {
-        INIT, DISC, AUTH, CODE_EXCHANGE, FINISH
-    }
+
+    private static final String AUTH_ACCOUNT_PREF = OktaAuthManager.class.getCanonicalName() + ".AuthAccount";
+    private static final String AUTH_CLIENT_PREF = OktaAuthManager.class.getCanonicalName() + ".AuthClient";
+    //need to restore auth.
+    private static final String AUTH_RESTORE_PREF = OktaAuthManager.class.getCanonicalName() + ".AuthRestore";
 
     //login method. currently only NATIVE and BROWSER_TAB.
     public enum LoginMethod {
         BROWSER_TAB, NATIVE
     }
 
+    private WeakReference<Activity> mActivity;
     private OktaAuthAccount mOktaAuthAccount;
+    private OktaClientAPI mOktaClient;
     private AuthorizationCallback mCallback;
     private AuthenticationPayload mPayload;
     private String mUsername;
@@ -82,45 +93,102 @@ public final class OktaAuthManager {
     private final MainThreadExecutor mMainThread = new MainThreadExecutor();
     private AuthorizationRequest mAuthRequest;
     private AuthorizationResponse mAuthResponse;
-    private AuthState mState;
     private static final int REQUEST_CODE_SIGN_IN = 100;
     private static final int REQUEST_CODE_SIGN_OUT = 101;
 
     private OktaAuthManager(@NonNull Builder builder) {
+        mActivity = builder.mActivity;
         mOktaAuthAccount = builder.mOktaAuthAccount;
         mCustomTabColor = builder.mCustomTabColor;
         mPayload = builder.mPayload;
         mOktaAuthAccount.mLoginMethod = builder.mMethod;
-        mState = AuthState.INIT;
         mUsername = builder.mUsername;
         mPassword = builder.mPassword;
-    }
-
-    //https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderConfig
-    public void startAuthorization(@NonNull final Activity activity, @NonNull final AuthorizationCallback cb) {
-        activity.getApplication().registerActivityLifecycleCallbacks(new EmptyActivityLifeCycle() {
+        restore();
+        mActivity.get().getApplication().registerActivityLifecycleCallbacks(new EmptyActivityLifeCycle() {
+            /*
             @Override
-            public void onActivityDestroyed(Activity newActivity) {
-                if (activity == newActivity) {
-                    activity.getApplication().unregisterActivityLifecycleCallbacks(this);
+            public void onActivityCreated(Activity activity, Bundle savedInstanceState) {
+                if (savedInstanceState != null) {
+                    //TODO restore instance
+                }
+            }
+
+            @Override
+            public void onActivitySaveInstanceState(Activity activity, Bundle outState) {
+                if (mActivity.get() == activity) {
+                    //TODO save instance
+                    outState.putString("TEST", "Test success");
+                }
+            }
+            */
+
+            @SuppressLint("ApplySharedPref")
+            @Override
+            public void onActivityDestroyed(Activity activity) {
+                if (mActivity.get() == activity) {
+                    if (mOktaAuthAccount != null) {
+                        persist(true);
+                    }
                     stop();
+                    if (mOktaClient != null) {
+                        mOktaClient.stop();
+                    }
                 }
             }
         });
+    }
 
+    private void persist(boolean immediate) {
+        SharedPreferences prefs = mActivity.get().getSharedPreferences(OktaAuthManager.class.getCanonicalName(), Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = prefs.edit();
+        editor.putBoolean(AUTH_RESTORE_PREF, true);
+        if (mAuthRequest != null) {
+            editor.putString(AUTH_REQUEST_PREF, mAuthRequest.jsonSerializeString());
+        }
+        if (mAuthResponse != null) {
+            editor.putString(AUTH_RESPONSE_PREF, mAuthResponse.jsonSerializeString());
+        }
+        if (mOktaAuthAccount != null) {
+            mOktaAuthAccount.persist(editor);
+        }
+        if (immediate) {
+            editor.commit(); //need to commit immediately since activity is being destroyed.
+        } else {
+            editor.apply();
+        }
+    }
+
+    private void restore() {
+        SharedPreferences prefs = mActivity.get().getSharedPreferences(OktaAuthManager.class.getCanonicalName(), Context.MODE_PRIVATE);
+        if (prefs.getBoolean(AUTH_RESTORE_PREF, false)) {
+            try {
+                mAuthRequest = AuthorizationRequest.jsonDeserialize(prefs.getString(AUTH_REQUEST_PREF, null));
+                mAuthResponse = AuthorizationResponse.jsonDeserialize(prefs.getString(AUTH_RESPONSE_PREF, null));
+                mOktaAuthAccount.restore(prefs);
+                prefs.edit().putBoolean(AUTH_RESTORE_PREF, false).apply();
+            } catch (JSONException ex) {
+                //do nothing
+            } catch (NullPointerException np) {
+                //do nothing
+            }
+        }
+    }
+
+    //https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderConfig
+    public void startAuthorization(@NonNull final AuthorizationCallback cb) {
         mCallback = cb;
         if (mOktaAuthAccount.haveConfiguration()) {
-            mExecutor.submit(() -> authenticate(activity));
+            mExecutor.submit(this::authenticate);
         } else {
             mExecutor.submit(() -> {
                 try {
                     mOktaAuthAccount.obtainConfiguration();
-                    if (mOktaAuthAccount.mLoginMethod == LoginMethod.BROWSER_TAB && !isRedirectUrisRegistered(activity, mOktaAuthAccount.getRedirectUri())) {
+                    if (mOktaAuthAccount.mLoginMethod == LoginMethod.BROWSER_TAB && !isRedirectUrisRegistered(mOktaAuthAccount.getRedirectUri())) {
                         mCallback.onError("No uri registered to handle redirect", INVALID_REDIRECT_URI);
                         return;
                     }
-                    mState = AuthState.DISC;
-                    authenticate(activity);
+                    authenticate();
                 } catch (AuthorizationException ae) {
                     mMainThread.execute(() -> mCallback.onError("can't obtain discovery doc", ae));
                 }
@@ -129,17 +197,17 @@ public final class OktaAuthManager {
     }
 
     @AnyThread
-    public void logOut(Activity activity, final OktaClientAPI.RequestCallback<Boolean, AuthorizationException> cb) {
+    public void logOut(final OktaClientAPI.RequestCallback<Boolean, AuthorizationException> cb) {
         if (mOktaAuthAccount.isLoggedIn()) {
             if (mOktaAuthAccount.mLoginMethod == OktaAuthManager.LoginMethod.BROWSER_TAB) {
                 EndSessionRequest request = new EndSessionRequest(
                         mOktaAuthAccount.getServiceConfig(),
                         mOktaAuthAccount.mTokenResponse.idToken,
                         mOktaAuthAccount.getServiceConfig().endSessionEndpoint);
-                Intent intent = new Intent(activity, OktaAuthenticationActivity.class);
+                Intent intent = new Intent(mActivity.get(), OktaAuthenticationActivity.class);
                 intent.putExtra(EXTRA_AUTH_URI, request.toUri());
                 intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-                activity.startActivityForResult(intent, 100);
+                mActivity.get().startActivityForResult(intent, 100);
             } else {
                 //TODO revoke tokens.
             }
@@ -148,7 +216,15 @@ public final class OktaAuthManager {
         }
     }
 
-    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+    public @Nullable
+    OktaClientAPI getAuthorizedClient() {
+        if (mOktaClient == null && mOktaAuthAccount != null && mOktaAuthAccount.isLoggedIn()) {
+            mOktaClient = new OktaClientAPI(mOktaAuthAccount);
+        }
+        return mOktaClient;
+    }
+
+    public void handleAuthResult(int requestCode, int resultCode, Intent data) {
         if (requestCode != REQUEST_CODE_SIGN_IN || mCallback == null) {
             return;
         }
@@ -174,7 +250,6 @@ public final class OktaAuthManager {
             mCallback.onError("Authorization flow failed: ", ex);
         } else if (response instanceof AuthorizationResponse) {
             mAuthResponse = (AuthorizationResponse) response;
-            mState = AuthState.AUTH;
             mExecutor.submit(this::codeExchange);
         } else {
             mCallback.onCancel();
@@ -187,11 +262,11 @@ public final class OktaAuthManager {
     }
 
     @WorkerThread
-    private void authenticate(Activity activity) {
+    private void authenticate() {
         if (mOktaAuthAccount.haveConfiguration()) {
             if (mOktaAuthAccount.mLoginMethod == LoginMethod.BROWSER_TAB) {
                 mAuthRequest = createAuthRequest();
-                activity.startActivityForResult(createAuthIntent(activity), REQUEST_CODE_SIGN_IN);
+                mActivity.get().startActivityForResult(createAuthIntent(), REQUEST_CODE_SIGN_IN);
             } else if (mOktaAuthAccount.mLoginMethod == LoginMethod.NATIVE) {
                 //TODO start native login flow.
             }
@@ -264,7 +339,7 @@ public final class OktaAuthManager {
                     return;
                 }
             }
-            mMainThread.execute(() -> mCallback.onSuccess(new OktaClientAPI(mOktaAuthAccount)));
+            mMainThread.execute(() -> mCallback.onSuccess(mOktaClient = new OktaClientAPI(mOktaAuthAccount)));
         } catch (IOException ex) {
             Logger.debugWithStack(ex, "Failed to complete exchange request");
             exception = AuthorizationException.fromTemplate(
@@ -282,16 +357,16 @@ public final class OktaAuthManager {
         }
     }
 
-    private Intent createAuthIntent(Activity activity) {
-        Intent intent = new Intent(activity, OktaAuthenticationActivity.class);
+    private Intent createAuthIntent() {
+        Intent intent = new Intent(mActivity.get(), OktaAuthenticationActivity.class);
         intent.putExtra(EXTRA_AUTH_URI, mAuthRequest.toUri());
         intent.putExtra(EXTRA_TAB_OPTIONS, mCustomTabColor);
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
         return intent;
     }
 
-    private boolean isRedirectUrisRegistered(Activity activity, @NonNull Uri uri) {
-        PackageManager pm = activity.getPackageManager();
+    private boolean isRedirectUrisRegistered(@NonNull Uri uri) {
+        PackageManager pm = mActivity.get().getPackageManager();
         List<ResolveInfo> resolveInfos = null;
         if (pm != null) {
             Intent intent = new Intent();
@@ -305,7 +380,7 @@ public final class OktaAuthManager {
             for (ResolveInfo info : resolveInfos) {
                 ActivityInfo activityInfo = info.activityInfo;
                 if (activityInfo.name.equals(OktaRedirectActivity.class.getCanonicalName()) &&
-                        activityInfo.packageName.equals(activity.getPackageName())) {
+                        activityInfo.packageName.equals(mActivity.get().getPackageName())) {
                     found = true;
                 } else {
                     Log.w(TAG, "Warning! Multiple applications found registered with same scheme");
@@ -364,6 +439,7 @@ public final class OktaAuthManager {
     }
 
     public static final class Builder {
+        private WeakReference<Activity> mActivity;
         private OktaAuthAccount mOktaAuthAccount;
         private AuthenticationPayload mPayload;
         private int mCustomTabColor;
@@ -371,7 +447,8 @@ public final class OktaAuthManager {
         private String mPassword;
         private LoginMethod mMethod = LoginMethod.BROWSER_TAB;
 
-        public Builder() {
+        public Builder(Activity activity) {
+            mActivity = new WeakReference<>(activity);
         }
 
         public OktaAuthManager create() {

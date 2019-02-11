@@ -15,6 +15,7 @@
 package com.okta.auth;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.support.annotation.NonNull;
 import android.support.annotation.RawRes;
@@ -48,6 +49,7 @@ import java.util.Set;
  */
 public class OktaAuthAccount {
     private static final String TAG = OktaAuthAccount.class.getSimpleName();
+    private static final String TOKEN_RESPONSE = "token_response";
     private static final String CLIENT_ID = "client_id";
     private static final String REDIRECT_URI = "redirect_uri";
     private static final String END_SESSION_REDIRECT_URI = "end_session_redirect_uri";
@@ -73,6 +75,26 @@ public class OktaAuthAccount {
         mEndSessionRedirectUri = builder.mEndSessionRedirectUri;
         mDiscoveryUri = builder.mDiscoveryUri;
         mScopes = builder.mScopes;
+    }
+
+    void persist(SharedPreferences.Editor editor) {
+        editor.putString(CLIENT_ID, mClientId);
+        editor.putString(REDIRECT_URI, mRedirectUri.toString());
+        editor.putString(END_SESSION_REDIRECT_URI, mEndSessionRedirectUri.toString());
+        editor.putString(DISCOVERY_URI, mDiscoveryUri.toString());
+        if (mTokenResponse != null) {
+            editor.putString(TOKEN_RESPONSE, mTokenResponse.jsonSerializeString());
+        }
+        editor.putString(OIDC_DISCOVERY, mServiceConfig.toJsonString());
+    }
+
+    void restore(SharedPreferences prefs) throws JSONException {
+        mClientId = prefs.getString(CLIENT_ID, null);
+        mRedirectUri = Uri.parse(prefs.getString(REDIRECT_URI, null));
+        mEndSessionRedirectUri = Uri.parse(prefs.getString(END_SESSION_REDIRECT_URI, null));
+        mDiscoveryUri = Uri.parse(prefs.getString(DISCOVERY_URI, null));
+        mTokenResponse = TokenResponse.jsonDeserialize(prefs.getString(TOKEN_RESPONSE, null));
+        mServiceConfig = AuthorizationServiceConfiguration.fromJson(prefs.getString(OIDC_DISCOVERY, null));
     }
 
     public String getClientId() {
@@ -105,9 +127,8 @@ public class OktaAuthAccount {
 
 
     public boolean isLoggedIn() {
-        return mTokenResponse.accessToken != null || mTokenResponse.idToken != null;
+        return mTokenResponse != null && (mTokenResponse.accessToken != null || mTokenResponse.idToken != null);
     }
-
 
     @WorkerThread
     void obtainConfiguration() throws AuthorizationException {
