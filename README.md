@@ -117,7 +117,7 @@ public class LoginActivity extends Activity {
 
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
+        //Context must be Activity instance.
         mOktaAuth = OktaAppAuth.getInstance(this);
 
         // Do any of your own setup of the Activity
@@ -137,6 +137,8 @@ public class LoginActivity extends Activity {
     }
 }
 ```
+
+The Context passed in `OktaAppAuth.getInstance` must be Activity instance.
 
 Once the OktaAppAuth instance is initialized, you can start the authorization flow by simply calling
 `login` whenever you're ready:
@@ -275,6 +277,22 @@ public class UserInfoActivity extends Activity {
     }
 }
 ```
+### Clean up
+
+Once authorization is done and the OktaAppAuth instance is no longer needed `dispose` must be called. For example in `LoginActivity`
+
+```java
+// LoginActivity.java
+    @Override
+    protected void onDestroy() {
+        if (mOktaAppAuth != null) {
+            mOktaAppAuth.dispose();
+            mOktaAppAuth = null;
+        }
+        super.onDestroy();
+    }
+```
+
 
 ## License
 

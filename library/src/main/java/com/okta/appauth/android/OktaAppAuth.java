@@ -88,7 +88,7 @@ public class OktaAppAuth {
     @ColorInt
     protected int mCustomTabColor;
 
-    protected Context mContext;
+    protected WeakReference<Context> mContext;
 
     /**
      * Retrieve the manager object via the static {@link WeakReference} or construct a new instance.
@@ -100,8 +100,10 @@ public class OktaAppAuth {
     public static OktaAppAuth getInstance(@NonNull Context context) {
         OktaAppAuth oktaAppAuth = INSTANCE_REF.get().get();
         if (oktaAppAuth == null) {
-            oktaAppAuth = new OktaAppAuth(context.getApplicationContext());
+            oktaAppAuth = new OktaAppAuth(context);
             INSTANCE_REF.set(new WeakReference<>(oktaAppAuth));
+        } else if (oktaAppAuth.mContext.get() == null) {
+            oktaAppAuth.mContext = new WeakReference<>(context);
         }
 
         return oktaAppAuth;
@@ -114,10 +116,10 @@ public class OktaAppAuth {
      */
     @AnyThread
     protected OktaAppAuth(Context context) {
-        mContext = context.getApplicationContext();
+        mContext = new WeakReference<>(context);
         mExecutor = Executors.newSingleThreadExecutor();
-        mAuthStateManager = AuthStateManager.getInstance(mContext);
-        mConfiguration = OAuthClientConfiguration.getInstance(mContext);
+        mAuthStateManager = AuthStateManager.getInstance(context.getApplicationContext());
+        mConfiguration = OAuthClientConfiguration.getInstance(context);
     }
 
     /**
@@ -286,7 +288,7 @@ public class OktaAppAuth {
             public void run() {
                 doAuth(
                         OktaManagementActivity.createStartIntent(
-                                context.getApplicationContext(),
+                                context,
                                 completionIntent,
                                 cancelIntent),
                         cancelIntent, payload);
@@ -331,7 +333,7 @@ public class OktaAppAuth {
             public void run() {
                 doEndSession(
                         OktaManagementActivity.createStartIntent(
-                                context.getApplicationContext(),
+                                context,
                                 completionIntent,
                                 cancelIntent),
                         cancelIntent);
@@ -369,6 +371,7 @@ public class OktaAppAuth {
             mAuthService.get().dispose();
             mAuthService.set(null);
         }
+        mInitializationListener.set(null);
     }
 
     /**
@@ -741,7 +744,13 @@ public class OktaAppAuth {
      */
     AuthorizationService createAuthorizationServiceIfNeeded() {
         if (mAuthService.get() == null) {
-            recreateAuthorizationService(mContext);
+            Context context = mContext.get();
+            if (context == null) {
+                throw new IllegalStateException("Invalid context. " +
+                        "Okta should be initialized first");
+            } else {
+                recreateAuthorizationService(context);
+            }
         }
         return mAuthService.get();
     }

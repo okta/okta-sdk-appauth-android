@@ -77,7 +77,7 @@ public class SessionAuthorizeActivity extends AppCompatActivity {
         displayLoading(getString(R.string.loading_initializing));
 
         mOktaAppAuth.init(
-                getApplicationContext(),
+                this,
                 new OktaAppAuth.OktaAuthListener() {
                     @Override
                     public void onSuccess() {
