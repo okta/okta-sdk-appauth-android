@@ -47,8 +47,8 @@ import java.util.Set;
 /*
     Okta OID application information
  */
-public class OktaAuthAccount {
-    private static final String TAG = OktaAuthAccount.class.getSimpleName();
+public class AuthAccount {
+    private static final String TAG = AuthAccount.class.getSimpleName();
     private static final String TOKEN_RESPONSE = "token_response";
     private static final String CLIENT_ID = "client_id";
     private static final String REDIRECT_URI = "redirect_uri";
@@ -62,14 +62,14 @@ public class OktaAuthAccount {
     private Uri mDiscoveryUri;
     private Set<String> mScopes;
 
-    OktaAuthManager.LoginMethod mLoginMethod;
+    AuthenticateClient.LoginMethod mLoginMethod;
     TokenResponse mTokenResponse;
 
     private static final String OIDC_DISCOVERY = ".well-known/openid-configuration";
 
     private AuthorizationServiceConfiguration mServiceConfig;
 
-    private OktaAuthAccount(Builder builder) {
+    private AuthAccount(Builder builder) {
         mClientId = builder.mClientId;
         mRedirectUri = builder.mRedirectUri;
         mEndSessionRedirectUri = builder.mEndSessionRedirectUri;
@@ -85,7 +85,9 @@ public class OktaAuthAccount {
         if (mTokenResponse != null) {
             editor.putString(TOKEN_RESPONSE, mTokenResponse.jsonSerializeString());
         }
-        editor.putString(OIDC_DISCOVERY, mServiceConfig.toJsonString());
+        if (mServiceConfig != null) {
+            editor.putString(OIDC_DISCOVERY, mServiceConfig.toJsonString());
+        }
     }
 
     void restore(SharedPreferences prefs) throws JSONException {
@@ -93,8 +95,14 @@ public class OktaAuthAccount {
         mRedirectUri = Uri.parse(prefs.getString(REDIRECT_URI, null));
         mEndSessionRedirectUri = Uri.parse(prefs.getString(END_SESSION_REDIRECT_URI, null));
         mDiscoveryUri = Uri.parse(prefs.getString(DISCOVERY_URI, null));
-        mTokenResponse = TokenResponse.jsonDeserialize(prefs.getString(TOKEN_RESPONSE, null));
-        mServiceConfig = AuthorizationServiceConfiguration.fromJson(prefs.getString(OIDC_DISCOVERY, null));
+        String json = prefs.getString(TOKEN_RESPONSE, null);
+        if (json != null) {
+            mTokenResponse = TokenResponse.jsonDeserialize(json);
+        }
+        json = prefs.getString(OIDC_DISCOVERY, null);
+        if (json != null) {
+            mServiceConfig = AuthorizationServiceConfiguration.fromJson(json);
+        }
     }
 
     public String getClientId() {
@@ -124,7 +132,6 @@ public class OktaAuthAccount {
     AuthorizationServiceConfiguration getServiceConfig() {
         return mServiceConfig;
     }
-
 
     public boolean isLoggedIn() {
         return mTokenResponse != null && (mTokenResponse.accessToken != null || mTokenResponse.idToken != null);
@@ -176,8 +183,8 @@ public class OktaAuthAccount {
         public Builder() {
         }
 
-        public OktaAuthAccount create() {
-            return new OktaAuthAccount(this);
+        public AuthAccount create() {
+            return new AuthAccount(this);
         }
 
         public Builder clientId(@NonNull String clientId) {

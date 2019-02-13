@@ -5,10 +5,10 @@ import android.support.annotation.Nullable;
 
 import com.okta.openid.appauth.AuthorizationException;
 
-public interface ResultCallback {
-    public void onSuccess(@NonNull OktaClientAPI clientAPI);
+public interface ResultCallback<T, U extends Exception> {
+    public void onSuccess(@NonNull T result);
 
     public void onCancel();
 
-    public void onError(@NonNull String msg, @Nullable AuthorizationException error);
+    public void onError(@NonNull String msg, @Nullable U exception);
 }

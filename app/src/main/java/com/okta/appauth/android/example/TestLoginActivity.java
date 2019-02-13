@@ -22,7 +22,6 @@ import android.os.Bundle;
 import android.support.annotation.ColorRes;
 import android.support.annotation.MainThread;
 import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
@@ -30,15 +29,12 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 
+import com.okta.auth.AuthenticateClient;
 import com.okta.auth.ResultCallback;
-import com.okta.auth.OktaAuthManager;
-import com.okta.auth.OktaAuthAccount;
-import com.okta.auth.OktaClientAPI;
+import com.okta.auth.AuthAccount;
+import com.okta.auth.AuthorizeClient;
 import com.okta.auth.RequestCallback;
 import com.okta.openid.appauth.AuthorizationException;
-import com.okta.openid.appauth.AuthorizationResponse;
-import com.okta.openid.appauth.TokenResponse;
-
 
 import org.json.JSONObject;
 
@@ -50,14 +46,12 @@ public class TestLoginActivity extends AppCompatActivity {
     private static final String TAG = "TestLoginActivity";
     private static final String EXTRA_FAILED = "failed";
 
-    private OktaAuthManager mOktaAuth;
-    private OktaAuthAccount mOktaAccount;
-    private OktaClientAPI mClient;
+    private AuthenticateClient mOktaAuth;
+    private AuthAccount mOktaAccount;
+    private AuthorizeClient mClient;
     private TextView mTvStatus;
     private Button mButton;
     private Button mSignOut;
-    private AuthorizationResponse mResponse;
-    private TokenResponse mToken;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -76,36 +70,16 @@ public class TestLoginActivity extends AppCompatActivity {
 
                     @Override
                     public void onError(String error, AuthorizationException exception) {
-                        Log.d("TestLoginActivity", "Logout request error: " + error);
+                        Log.d("TestLoginActivity", "Logout request error: " + error, exception);
                     }
                 });
             }
         });
 
-        mButton.setOnClickListener(v -> {
-                    mOktaAuth.startAuthorization(new RequestCallback<Boolean, AuthorizationException>() {
-                        @Override
-                        public void onSuccess(Boolean success) {
-                            Log.d("TestLoginActivity", "request success: " + success);
-                        }
-
-                        @Override
-                        public void onError(String msg, AuthorizationException error) {
-                            Log.d("TestLoginActivity", msg + " " + error.errorDescription + " onError " + Thread.currentThread().toString());
-                            if (error != null) {
-                                mTvStatus.setText(error.errorDescription);
-                            } else {
-                                mTvStatus.setText(msg);
-                            }
-                        }
-                    });
-                    //testing config change.
-                    //setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
-                }
-        );
+        mButton.setOnClickListener(v -> signIn());
         mTvStatus = findViewById(R.id.status);
 
-        mOktaAccount = new OktaAuthAccount.Builder()
+        mOktaAccount = new AuthAccount.Builder()
                 .clientId("0oaiv94wtjW7DHvvj0h7")
                 .redirectUri("com.okta.appauth.android.example:/callback")
                 .endSessionRedirectUri("com.okta.appauth.android.example:/logout")
@@ -113,7 +87,7 @@ public class TestLoginActivity extends AppCompatActivity {
                 .discoveryUri("https://dev-486177.oktapreview.com/oauth2/default")
                 .create();
 
-        mOktaAuth = new OktaAuthManager.Builder(this)
+        mOktaAuth = new AuthenticateClient.Builder(this)
                 .withAccount(mOktaAccount)
                 .withTabColor(getColorCompat(R.color.colorPrimary))
                 .create();
@@ -131,19 +105,27 @@ public class TestLoginActivity extends AppCompatActivity {
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        Log.d(TAG, "onActivityResult");
+        Log.d(TAG, String.format("onActivityResult requestCode=%d resultCode=%d PID=%d", requestCode, resultCode, android.os.Process.myPid()));
         super.onActivityResult(requestCode, resultCode, data);
 
-        // Pass result to OktaAuthManager for processing
-        mOktaAuth.handleAuthResult(requestCode, resultCode, data, new ResultCallback() {
+        // Pass result to AuthenticateClient for processing
+        mOktaAuth.handleAuthResult(requestCode, resultCode, data, new ResultCallback<AuthorizeClient, AuthorizationException>() {
             @Override
-            public void onSuccess(OktaClientAPI clientAPI) {
+            public void onSuccess(@NonNull AuthorizeClient clientAPI) {
                 Log.d("TestLoginActivity", "SUCCESS");
                 mClient = clientAPI;
-                mTvStatus.setText("authentication success");
-                mButton.setText("Get profile");
-                mButton.setOnClickListener(v -> getProfile());
-                mSignOut.setVisibility(View.VISIBLE);
+                if (requestCode == AuthenticateClient.REQUEST_CODE_SIGN_OUT) {
+                    mTvStatus.setText("sign out success");
+                    mButton.setText("Sign In");
+                    mButton.setOnClickListener(v -> signIn());
+                    mSignOut.setVisibility(View.INVISIBLE);
+                } else if (requestCode == AuthenticateClient.REQUEST_CODE_SIGN_IN) {
+                    AuthorizeClient.AuthorizeAPI mClientAuthorizeAPI = clientAPI.getClientApi();
+                    mTvStatus.setText("authentication success");
+                    mButton.setText("Get profile");
+                    mButton.setOnClickListener(v -> getProfile());
+                    mSignOut.setVisibility(View.VISIBLE);
+                }
             }
 
             @Override
@@ -153,13 +135,9 @@ public class TestLoginActivity extends AppCompatActivity {
             }
 
             @Override
-            public void onError(String msg, AuthorizationException error) {
-                Log.d("TestLoginActivity", error.errorDescription + "onActivityResult onError " + msg);
-                if (error != null) {
-                    mTvStatus.setText(error.errorDescription);
-                } else {
-                    mTvStatus.setText(msg);
-                }
+            public void onError(@NonNull String msg, AuthorizationException error) {
+                Log.d("TestLoginActivity", error.errorDescription + "onActivityResult onError " + msg, error);
+                mTvStatus.setText(msg);
             }
         });
     }
@@ -170,6 +148,27 @@ public class TestLoginActivity extends AppCompatActivity {
                 message,
                 Snackbar.LENGTH_SHORT)
                 .show();
+    }
+
+    private void signIn() {
+        mOktaAuth.startAuthorization(new RequestCallback<Boolean, AuthorizationException>() {
+            @Override
+            public void onSuccess(Boolean success) {
+                Log.d("TestLoginActivity", "request success: " + success);
+            }
+
+            @Override
+            public void onError(String msg, AuthorizationException error) {
+                Log.d("TestLoginActivity", msg + " " + error.errorDescription + " onError " + Thread.currentThread().toString());
+                if (error != null) {
+                    mTvStatus.setText(error.errorDescription);
+                } else {
+                    mTvStatus.setText(msg);
+                }
+            }
+        });
+        //testing config change.
+        //setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
     }
 
     private void getProfile() {
@@ -184,19 +183,6 @@ public class TestLoginActivity extends AppCompatActivity {
                 Log.d(TAG, error, exception);
             }
         });
-
-/*
-        mExecutor.submit(() -> {
-            try {
-                JSONObject jsonObject = mClient.getUserProfile();
-                runOnUiThread(() -> {
-                    mTvStatus.setText(jsonObject.toString());
-                });
-            } catch (Exception ex) {
-                Log.d(TAG, "", ex);
-            }
-        });
-        */
     }
 
     @TargetApi(Build.VERSION_CODES.M)
