@@ -32,6 +32,7 @@ import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.util.Log;
+
 import net.openid.appauth.AppAuthConfiguration;
 import net.openid.appauth.AuthState;
 import net.openid.appauth.AuthState.AuthStateAction;
@@ -46,7 +47,9 @@ import net.openid.appauth.EndSessionRequest;
 import net.openid.appauth.ResponseTypeValues;
 import net.openid.appauth.TokenResponse;
 import net.openid.appauth.connectivity.DefaultConnectionBuilder;
+
 import okio.Okio;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -164,7 +167,7 @@ public class OktaAppAuth {
     /**
      * Performs revocation of accessToken or refreshToken.
      *
-     * @param token accessToken or refreshToken {@link OktaAppAuth#getTokens()}
+     * @param token    accessToken or refreshToken {@link OktaAppAuth#getTokens()}
      * @param listener revocation callback {@link OktaRevokeListener}
      */
     public void revoke(final String token, @NonNull final OktaRevokeListener listener) {
@@ -207,18 +210,18 @@ public class OktaAppAuth {
                     doRevoke(
                             mAuthStateManager.getCurrent().getRefreshToken(),
                             new OktaRevokeListener() {
-                            @Override
-                            public void onSuccess() {
+                                @Override
+                                public void onSuccess() {
                                     doRevoke(mAuthStateManager
                                                     .getCurrent().getAccessToken(),
                                             listener);
-                            }
+                                }
 
-                            @Override
-                            public void onError(AuthorizationException ex) {
+                                @Override
+                                public void onError(AuthorizationException ex) {
                                     listener.onError(ex);
-                            }
-                        });
+                                }
+                            });
                 }
             });
         } else {
@@ -233,7 +236,7 @@ public class OktaAppAuth {
     }
 
     @WorkerThread
-    private void doRevoke(String token,@NonNull RevokeTokenRequest.RevokeListener listener) {
+    private void doRevoke(String token, @NonNull RevokeTokenRequest.RevokeListener listener) {
         RevokeTokenRequest request =
                 new RevokeTokenRequest.Builder(
                         mAuthStateManager.getCurrent()
@@ -297,8 +300,8 @@ public class OktaAppAuth {
     /**
      * Authenticate using Session Token.
      *
-     * @param sessionToken     Session Token
-     * @param listener         The OktaAuthListener to receive callback with results
+     * @param sessionToken Session Token
+     * @param listener     The OktaAuthListener to receive callback with results
      */
     public void authenticate(
             final String sessionToken,
@@ -369,6 +372,7 @@ public class OktaAppAuth {
             mAuthService.get().dispose();
             mAuthService.set(null);
         }
+        mInitializationListener.set(null);
     }
 
     /**
@@ -653,7 +657,10 @@ public class OktaAppAuth {
     @WorkerThread
     private void initializeAuthRequest() {
         createAuthRequest("");
-        mInitializationListener.get().onSuccess();
+        OktaAuthListener listener = mInitializationListener.get();
+        if (listener != null) {
+            listener.onSuccess();
+        }
     }
 
     private void createAuthRequest(@Nullable AuthenticationPayload payload) {
@@ -709,7 +716,10 @@ public class OktaAppAuth {
                                                     AuthorizationException ex) {
         if (config == null) {
             Log.e(TAG, "Failed to retrieve discovery document", ex);
-            mInitializationListener.get().onTokenFailure(ex);
+            OktaAuthListener listener = mInitializationListener.get();
+            if (listener != null) {
+                listener.onTokenFailure(ex);
+            }
             return;
         }
 
@@ -802,7 +812,7 @@ public class OktaAppAuth {
 
         createAuthorizationServiceIfNeeded()
                 .performEndOfSessionRequest(request, completionIntent,
-                cancelIntent, endSessionIntent);
+                        cancelIntent, endSessionIntent);
     }
 
     @WorkerThread
@@ -1039,6 +1049,7 @@ public class OktaAppAuth {
      * Responds to changes in the login hint. After a "debounce" delay, warms up the browser
      * for a request with the new login hint; this avoids constantly re-initializing the
      * browser while the user is typing.
+     *
      * @deprecated As of version 0.3.0, will be removed as a part of version 1.0.0
      */
     @Deprecated
