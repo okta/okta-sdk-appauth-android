@@ -35,7 +35,7 @@ import static com.okta.openid.appauth.Preconditions.checkNotEmpty;
 import static com.okta.openid.appauth.Preconditions.checkNotNull;
 
 /**
- * Request that used to create new account.
+ * HttpRequest that used to create new account.
  */
 public class RegistrationRequest {
     /**

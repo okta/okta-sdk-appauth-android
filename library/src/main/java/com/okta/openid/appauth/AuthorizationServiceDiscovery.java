@@ -416,7 +416,7 @@ public class AuthorizationServiceDiscovery {
     }
 
     /**
-     * The JWS signing algorithms (alg values) supported for Request Objects.
+     * The JWS signing algorithms (alg values) supported for HttpRequest Objects.
      *
      * @see "OpenID Connect Core 1.0, Section 6.1
      * <https://openid.net/specs/openid-connect-core-1_0.html#rfc.section.6.1>"
@@ -426,7 +426,7 @@ public class AuthorizationServiceDiscovery {
     }
 
     /**
-     * The JWE encryption algorithms (alg values) supported for Request Objects.
+     * The JWE encryption algorithms (alg values) supported for HttpRequest Objects.
      */
     @Nullable
     public List<String> getRequestObjectEncryptionAlgorithmValuesSupported() {
@@ -434,7 +434,7 @@ public class AuthorizationServiceDiscovery {
     }
 
     /**
-     * The JWE encryption encodings (enc values) supported for Request Objects.
+     * The JWE encryption encodings (enc values) supported for HttpRequest Objects.
      */
     @Nullable
     public List<String> getRequestObjectEncryptionEncodingValuesSupported() {

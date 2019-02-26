@@ -159,7 +159,7 @@ public class RegistrationResponse {
     }
 
     /**
-     * Request builder.
+     * HttpRequest builder.
      */
     public static final class Builder {
         @NonNull

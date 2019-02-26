@@ -12,17 +12,26 @@
  * See the License for the specific language governing permissions and limitations under the
  * License.
  */
-package com.okta.auth;
+package com.okta.auth.http.requests;
 
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-
+import com.okta.auth.RequestCallback;
 import com.okta.openid.appauth.AuthorizationException;
 
-public interface ResultCallback<T, U extends Exception> {
-    public void onSuccess(@NonNull T result);
+import java.util.concurrent.ExecutorService;
 
-    public void onCancel();
+public interface HttpRequest<T, U extends AuthorizationException> {
+    public enum Type {
+        CONFIGURATION,
+        TOKEN_EXCHANGE,
+        AUTHORIZED,
+        PROFILE
+    }
 
-    public void onError(@NonNull String msg, @Nullable U exception);
+    void dispatchRequest(ExecutorService dispatcher, RequestCallback<T, U> callback);
+
+    T executeRequest() throws AuthorizationException;
+
+    void cancelRequest();
+
+    void close();
 }

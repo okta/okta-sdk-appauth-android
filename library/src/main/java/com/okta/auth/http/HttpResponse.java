@@ -38,6 +38,7 @@ public final class HttpResponse {
     private final Map<String, List<String>> mHeaders;
     private final int mLength;
     private final HttpURLConnection mConnection;
+    private InputStream mInputStream;
 
     /**
      * HttpResponse for empty response body.
@@ -65,6 +66,7 @@ public final class HttpResponse {
         mConnection = connection;
     }
 
+
     public final int getStatusCode() {
         return mStatusCode;
     }
@@ -78,18 +80,24 @@ public final class HttpResponse {
     }
 
     public final InputStream getContent() {
-        InputStream inputStream;
         try {
-            inputStream = mConnection.getInputStream();
+            mInputStream = mConnection.getInputStream();
         } catch (IOException e) {
-            inputStream = mConnection.getErrorStream();
+            mInputStream = mConnection.getErrorStream();
         }
-        return inputStream;
+        return mInputStream;
     }
 
     public void disconnect() {
         if (mConnection != null) {
             mConnection.disconnect();
+        }
+        if (mInputStream != null) {
+            try {
+                mInputStream.close();
+            } catch (IOException ioe) {
+                //NO-OP
+            }
         }
     }
 

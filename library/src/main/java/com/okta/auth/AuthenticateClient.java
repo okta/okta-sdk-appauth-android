@@ -14,7 +14,6 @@
  */
 package com.okta.auth;
 
-import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
@@ -33,36 +32,39 @@ import android.text.TextUtils;
 import android.util.Log;
 
 import com.okta.appauth.android.AuthenticationPayload;
-import com.okta.auth.http.HttpRequest;
+import com.okta.auth.http.HttpConnection;
+import com.okta.auth.http.HttpConnectionFactory;
+import com.okta.auth.http.requests.AuthorizedRequest;
+import com.okta.auth.http.requests.ConfigurationRequest;
+import com.okta.auth.http.requests.HttpRequest;
 import com.okta.auth.http.HttpResponse;
+import com.okta.auth.http.requests.HttpRequestBuilder;
+import com.okta.auth.http.requests.TokenExchangeRequest;
 import com.okta.openid.appauth.AuthorizationException;
 import com.okta.openid.appauth.AuthorizationManagementRequest;
 import com.okta.openid.appauth.AuthorizationManagementResponse;
 import com.okta.openid.appauth.AuthorizationRequest;
 import com.okta.openid.appauth.AuthorizationResponse;
+import com.okta.openid.appauth.AuthorizationServiceConfiguration;
+import com.okta.openid.appauth.AuthorizationServiceDiscovery;
 import com.okta.openid.appauth.EndSessionRequest;
 import com.okta.openid.appauth.EndSessionResponse;
-import com.okta.openid.appauth.IdToken;
 import com.okta.openid.appauth.ResponseTypeValues;
-import com.okta.openid.appauth.SystemClock;
-import com.okta.openid.appauth.TokenRequest;
 import com.okta.openid.appauth.TokenResponse;
 import com.okta.openid.appauth.internal.Logger;
-import com.okta.openid.appauth.internal.UriUtil;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.Executor;
 
 import static android.app.Activity.RESULT_CANCELED;
 import static com.okta.auth.OktaAuthenticationActivity.EXTRA_AUTH_URI;
 import static com.okta.auth.OktaAuthenticationActivity.EXTRA_TAB_OPTIONS;
+import static com.okta.auth.http.requests.HttpRequest.Type.TOKEN_EXCHANGE;
 import static com.okta.openid.appauth.AuthorizationException.GeneralErrors.USER_CANCELED_AUTH_FLOW;
 import static com.okta.openid.appauth.AuthorizationException.RegistrationRequestErrors.INVALID_REDIRECT_URI;
 
@@ -74,60 +76,51 @@ public final class AuthenticateClient {
     //need to restore auth.
     private static final String AUTH_RESTORE_PREF = AuthenticateClient.class.getCanonicalName() + ".AuthRestore";
 
-    //login method. currently only NATIVE and BROWSER_TAB.
-    public enum LoginMethod {
-        BROWSER_TAB, NATIVE
-    }
-
     private WeakReference<Activity> mActivity;
-    private static AuthenticateClient sInstance;
-    private AuthAccount mAuthAccount;
-    private AuthorizeClient mAuthorizeClient;
+    private OIDCAccount mOIDCAccount;
     private AuthenticationPayload mPayload;
-    private String mUsername;
-    private String mPassword;
     private int mCustomTabColor;
 
-    private final ExecutorService mExecutor = Executors.newSingleThreadExecutor();
-    private final MainThreadExecutor mMainThread = new MainThreadExecutor();
+    private ThreadDispatcher mDispatcher;
     private AuthorizationManagementRequest mAuthRequest;
     private AuthorizationResponse mAuthResponse;
     private EndSessionResponse mEndSessionResponse;
-    private RequestCallback<Boolean, AuthorizationException> mRequestCb;
-    private ResultCallback<AuthorizeClient, AuthorizationException> mResultCb;
+    private HttpConnectionFactory mConnectionFactory;
+    private ResultCallback<Boolean, AuthorizationException> mResultCb;
+    private static boolean sResultHandled = false;
+    private HttpRequest mCurrentHttpRequest;
     public static final int REQUEST_CODE_SIGN_IN = 100;
     public static final int REQUEST_CODE_SIGN_OUT = 101;
-    private static boolean sResultHandled = false;
 
     private AuthenticateClient(@NonNull Builder builder) {
-        mActivity = builder.mActivity;
-        mAuthAccount = builder.mAuthAccount;
+        mConnectionFactory = builder.mConnectionFactory;
+        mOIDCAccount = builder.mOIDCAccount;
         mCustomTabColor = builder.mCustomTabColor;
         mPayload = builder.mPayload;
-        mAuthAccount.mLoginMethod = builder.mMethod;
-        mUsername = builder.mUsername;
-        mPassword = builder.mPassword;
+        mDispatcher = new ThreadDispatcher(builder.mCallbackExecutor);
+    }
+
+    private void registerActivityLifeCycle(@NonNull final Activity activity) {
+        mActivity = new WeakReference<>(activity);
         mActivity.get().getApplication().registerActivityLifecycleCallbacks(new EmptyActivityLifeCycle() {
             @Override
             public void onActivitySaveInstanceState(Activity activity, Bundle outState) {
-                if (mActivity.get() == activity) {
+                if (mActivity != null && mActivity.get() == activity) {
                     persist();
                 }
             }
 
             @Override
             public void onActivityDestroyed(Activity activity) {
-                if (mActivity.get() == activity) {
+                if (mActivity != null && mActivity.get() == activity) {
                     stop();
-                    if (mAuthorizeClient != null) {
-                        mAuthorizeClient.stop();
-                    }
                     mActivity.get().getApplication().unregisterActivityLifecycleCallbacks(this);
                 }
             }
         });
     }
 
+    //TODO separate saving instance state to requests.
     private void persist() {
         SharedPreferences prefs = mActivity.get().getSharedPreferences(AuthenticateClient.class.getCanonicalName(), Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = prefs.edit();
@@ -138,14 +131,14 @@ public final class AuthenticateClient {
         if (mAuthResponse != null) {
             editor.putString(AUTH_RESPONSE_PREF, mAuthResponse.jsonSerializeString());
         }
-        if (mAuthAccount != null) {
-            mAuthAccount.persist(editor);
+        if (mOIDCAccount != null) {
+            mOIDCAccount.persist(editor);
         }
         editor.apply();
     }
 
-    private void restore() {
-        SharedPreferences prefs = mActivity.get().getSharedPreferences(AuthenticateClient.class.getCanonicalName(), Context.MODE_PRIVATE);
+    private void restore(Activity activity) {
+        SharedPreferences prefs = activity.getSharedPreferences(AuthenticateClient.class.getCanonicalName(), Context.MODE_PRIVATE);
         if (prefs.getBoolean(AUTH_RESTORE_PREF, false)) {
             try {
                 String json = prefs.getString(AUTH_REQUEST_PREF, null);
@@ -156,79 +149,121 @@ public final class AuthenticateClient {
                 if (json != null) {
                     mAuthResponse = AuthorizationResponse.jsonDeserialize(json);
                 }
-                mAuthAccount.restore(prefs);
+                mOIDCAccount.restore(prefs);
                 clearPreferences();
             } catch (JSONException ex) {
-                //do nothing
+                //NO-OP
             }
         }
     }
 
     private void clearPreferences() {
-        SharedPreferences prefs = mActivity.get().getSharedPreferences(AuthenticateClient.class.getCanonicalName(), Context.MODE_PRIVATE);
+        SharedPreferences prefs = mActivity.get()
+                .getSharedPreferences(AuthenticateClient.class.getCanonicalName(),
+                        Context.MODE_PRIVATE);
         prefs.edit().remove(AUTH_RESPONSE_PREF)
                 .remove(AUTH_REQUEST_PREF)
                 .remove(AUTH_RESTORE_PREF)
                 .apply();
     }
+    //end
+
+    private void cancelCurrentRequest() {
+        if (mCurrentHttpRequest != null) {
+            mCurrentHttpRequest.cancelRequest();
+            mCurrentHttpRequest = null;
+        }
+    }
+
+    public ConfigurationRequest configurationRequest() {
+        cancelCurrentRequest();
+        mCurrentHttpRequest = HttpRequestBuilder.newRequest()
+                .request(HttpRequest.Type.CONFIGURATION)
+                .connectionFactory(mConnectionFactory)
+                .account(mOIDCAccount).createRequest();
+        return (ConfigurationRequest) mCurrentHttpRequest;
+    }
+
+    public AuthorizedRequest userProfileRequest() {
+        cancelCurrentRequest();
+        mCurrentHttpRequest = HttpRequestBuilder.newRequest()
+                .request(HttpRequest.Type.PROFILE)
+                .connectionFactory(mConnectionFactory)
+                .account(mOIDCAccount).createRequest();
+        return (AuthorizedRequest) mCurrentHttpRequest;
+    }
+
+    public AuthorizedRequest authorizedRequest(@NonNull Uri uri, @Nullable Map<String, String> properties, @Nullable Map<String, String> postParameters,
+                                               @NonNull HttpConnection.RequestMethod method) {
+        cancelCurrentRequest();
+        mCurrentHttpRequest = HttpRequestBuilder.newRequest()
+                .request(HttpRequest.Type.AUTHORIZED)
+                .connectionFactory(mConnectionFactory)
+                .account(mOIDCAccount)
+                .uri(uri)
+                .properties(properties)
+                .postParameters(postParameters)
+                .createRequest();
+        return (AuthorizedRequest) mCurrentHttpRequest;
+    }
+
+    public void getUserProfile(final RequestCallback<JSONObject, AuthorizationException> cb) {
+        cancelCurrentRequest();
+        AuthorizedRequest request = userProfileRequest();
+        request.dispatchRequest(mDispatcher, cb);
+    }
 
     @AnyThread
-    public void startAuthorization(@NonNull final RequestCallback<Boolean, AuthorizationException> cb) {
-        mRequestCb = cb;
-        sResultHandled = false;
-        if (mAuthAccount.haveConfiguration()) {
-            mExecutor.submit(this::authenticate);
+    public void logIn(@NonNull final Activity activity, @NonNull final RequestCallback<Boolean, AuthorizationException> cb) {
+        if (mOIDCAccount.haveConfiguration()) {
+            authenticate(activity, cb);
         } else {
-            mExecutor.submit(() -> {
-                try {
-                    mAuthAccount.obtainConfiguration();
-                    if (mAuthAccount.mLoginMethod == LoginMethod.BROWSER_TAB && !isRedirectUrisRegistered(mAuthAccount.getRedirectUri())) {
-                        mMainThread.execute(() -> mRequestCb.onError("No uri registered to handle redirect or multiple applications registered", INVALID_REDIRECT_URI));
-                        return;
-                    }
-                    authenticate();
-                } catch (AuthorizationException ae) {
-                    mMainThread.execute(() -> mRequestCb.onError("can't obtain discovery doc", ae));
+            ConfigurationRequest request = configurationRequest();
+            mCurrentHttpRequest = request;
+            request.dispatchRequest(mDispatcher, new RequestCallback<AuthorizationServiceDiscovery, AuthorizationException>() {
+                @Override
+                public void onSuccess(@NonNull AuthorizationServiceDiscovery result) {
+                    mOIDCAccount.setServiceConfig(new AuthorizationServiceConfiguration(result));
+                    authenticate(activity, cb);
+                }
+
+                @Override
+                public void onError(String error, AuthorizationException exception) {
+                    mDispatcher.execute(() -> cb.onError("can't obtain discovery doc", exception));
                 }
             });
         }
     }
 
+    private void authenticate(@NonNull final Activity activity, @NonNull final RequestCallback<Boolean, AuthorizationException> cb) {
+        try {
+            authenticateWithBrowser(activity);
+        } catch (AuthorizationException ae) {
+            mDispatcher.execute(() -> cb.onError("Invalid redirect or discovery document", ae));
+        }
+    }
+
     @AnyThread
-    public void logOut(final RequestCallback<Boolean, AuthorizationException> cb) {
+    public void logOut(@NonNull final Activity activity, @NonNull final RequestCallback<Boolean, AuthorizationException> cb) {
         sResultHandled = false;
-        if (mAuthAccount.isLoggedIn()) {
-            mRequestCb = cb;
-            if (mAuthAccount.mLoginMethod == AuthenticateClient.LoginMethod.BROWSER_TAB) {
-                mAuthRequest = new EndSessionRequest(
-                        mAuthAccount.getServiceConfig(),
-                        mAuthAccount.mTokenResponse.idToken,
-                        mAuthAccount.getEndSessionRedirectUri());
-                Intent intent = new Intent(mActivity.get(), OktaAuthenticationActivity.class);
-                intent.putExtra(EXTRA_AUTH_URI, mAuthRequest.toUri());
-                intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-                mActivity.get().startActivityForResult(intent, REQUEST_CODE_SIGN_OUT);
-            } else {
-                //TODO revoke tokens.
-            }
+        if (mOIDCAccount.isLoggedIn()) {
+            registerActivityLifeCycle(activity);
+            mAuthRequest = new EndSessionRequest(
+                    mOIDCAccount.getServiceConfig(),
+                    mOIDCAccount.getIdToken(),
+                    mOIDCAccount.getEndSessionRedirectUri());
+            Intent intent = new Intent(mActivity.get(), OktaAuthenticationActivity.class);
+            intent.putExtra(EXTRA_AUTH_URI, mAuthRequest.toUri());
+            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            mActivity.get().startActivityForResult(intent, REQUEST_CODE_SIGN_OUT);
         } else {
             cb.onSuccess(true);
         }
     }
 
-    public @Nullable
-    AuthorizeClient getAuthorizedClient() {
-        if (mAuthorizeClient == null && mAuthAccount != null && mAuthAccount.isLoggedIn()) {
-            mAuthorizeClient = new AuthorizeClient(mAuthAccount);
-        }
-        return mAuthorizeClient;
-    }
-
-    public void handleAuthResult(int requestCode, int resultCode, Intent data, ResultCallback<AuthorizeClient, AuthorizationException> cb) {
-        if (requestCode != REQUEST_CODE_SIGN_IN && requestCode != REQUEST_CODE_SIGN_OUT) {
-            return;
-        }
-        if (sResultHandled) {
+    //Code exchange
+    public void handleAuthResult(Activity activity, int requestCode, int resultCode, Intent data, ResultCallback<Boolean, AuthorizationException> cb) {
+        if (requestCode != REQUEST_CODE_SIGN_IN && requestCode != REQUEST_CODE_SIGN_OUT || sResultHandled) {
             return;
         }
         mResultCb = cb;
@@ -240,7 +275,7 @@ public final class AuthenticateClient {
         Uri responseUri = data.getData();
         Intent responseData;
         try {
-            responseData = extractResponseData(responseUri);
+            responseData = extractResponseData(activity, responseUri);
         } catch (AuthorizationException ex) {
             mResultCb.onError("Failed to extract OAuth2 response from redirect", ex);
             return;
@@ -254,121 +289,77 @@ public final class AuthenticateClient {
             mResultCb.onError("Authorization flow failed: ", ex);
         } else if (requestCode == REQUEST_CODE_SIGN_IN) {
             mAuthResponse = (AuthorizationResponse) response;
-            //TODO return a future task
-            mExecutor.submit(this::codeExchange);
+            codeExchange();
         } else {
             mEndSessionResponse = (EndSessionResponse) response;
             //TODO revoke tokens?
-            clearPreferences();
-            mResultCb.onSuccess(mAuthorizeClient);
+            mResultCb.onSuccess(true);
         }
+        clearPreferences();
         sResultHandled = true;
     }
 
     private void stop() {
         mResultCb = null;
-        mRequestCb = null;
-        mMainThread.shutdown();
-        mExecutor.shutdownNow();
+        cancelCurrentRequest();
+        mDispatcher.shutdown();
     }
 
-    @WorkerThread
-    private void authenticate() {
-        if (mAuthAccount.haveConfiguration()) {
-            if (mAuthAccount.mLoginMethod == LoginMethod.BROWSER_TAB) {
-                mAuthRequest = createAuthRequest();
-                mActivity.get().startActivityForResult(createAuthIntent(), REQUEST_CODE_SIGN_IN);
-            } else if (mAuthAccount.mLoginMethod == LoginMethod.NATIVE) {
-                //TODO start native login flow.
+    @AnyThread
+    public void authenticateWithBrowser(Activity activity) throws AuthorizationException {
+        sResultHandled = false;
+        registerActivityLifeCycle(activity);
+        if (mOIDCAccount.haveConfiguration()) {
+            mAuthRequest = createAuthRequest();
+            if (!isRedirectUrisRegistered(mOIDCAccount.getRedirectUri())) {
+                Log.e(TAG, "No uri registered to handle redirect or multiple applications registered");
+                throw INVALID_REDIRECT_URI;
             }
+            activity.startActivityForResult(createAuthIntent(), REQUEST_CODE_SIGN_IN);
         } else {
-            mMainThread.execute(() -> mRequestCb.onError("Invalid account information",
-                    AuthorizationException.GeneralErrors.INVALID_DISCOVERY_DOCUMENT));
+            throw AuthorizationException.GeneralErrors.INVALID_DISCOVERY_DOCUMENT;
         }
+    }
+
+    private AuthorizationRequest createAuthRequest() {
+        AuthorizationRequest.Builder authRequestBuilder = new AuthorizationRequest.Builder(
+                mOIDCAccount.getServiceConfig(),
+                mOIDCAccount.getClientId(),
+                ResponseTypeValues.CODE,
+                mOIDCAccount.getRedirectUri())
+                .setScopes(mOIDCAccount.getScopes());
+
+        if (mPayload != null) {
+            authRequestBuilder.setAdditionalParameters(mPayload.getAdditionalParameters());
+            if (!TextUtils.isEmpty(mPayload.toString())) {
+                authRequestBuilder.setState(mPayload.getState());
+            }
+            if (!TextUtils.isEmpty(mPayload.getLoginHint())) {
+                authRequestBuilder.setLoginHint(mPayload.getLoginHint());
+            }
+        }
+        return authRequestBuilder.build();
     }
 
     @WorkerThread
     private void codeExchange() {
-        AuthorizationException exception;
-        HttpResponse response = null;
-        try {
-            TokenRequest tokenRequest = mAuthResponse.createTokenExchangeRequest();
-            Map<String, String> parameters = tokenRequest.getRequestParameters();
-            parameters.put(TokenRequest.PARAM_CLIENT_ID, ((AuthorizationRequest) mAuthRequest).clientId);
+        mCurrentHttpRequest = HttpRequestBuilder.newRequest().request(TOKEN_EXCHANGE).account(mOIDCAccount)
+                .authRequest(mAuthRequest)
+                .authResponse(mAuthResponse)
+                .createRequest();
 
-            response = new HttpRequest.Builder().setRequestMethod(HttpRequest.RequestMethod.POST)
-                    .setUri(mAuthAccount.getServiceConfig().tokenEndpoint)
-                    .setRequestProperty("Accept", "application/json")
-                    .setPostParameters(parameters)
-                    .create()
-                    .executeRequest();
-
-            JSONObject json = response.asJson();
-            if (json.has(AuthorizationException.PARAM_ERROR)) {
-                try {
-                    final String error = json.getString(AuthorizationException.PARAM_ERROR);
-                    final AuthorizationException ex = AuthorizationException.fromOAuthTemplate(
-                            AuthorizationException.TokenRequestErrors.byString(error),
-                            error,
-                            json.optString(AuthorizationException.PARAM_ERROR_DESCRIPTION, null),
-                            UriUtil.parseUriIfAvailable(
-                                    json.optString(AuthorizationException.PARAM_ERROR_URI)));
-                    mMainThread.execute(() -> mResultCb.onError(error, ex));
-                } catch (JSONException jsonEx) {
-                    mMainThread.execute(() -> mResultCb.onError("error", AuthorizationException.fromTemplate(
-                            AuthorizationException.GeneralErrors.JSON_DESERIALIZATION_ERROR,
-                            jsonEx)));
-                }
-                return;
+        ((TokenExchangeRequest) mCurrentHttpRequest).dispatchRequest(mDispatcher, new RequestCallback<TokenResponse, AuthorizationException>() {
+            @Override
+            public void onSuccess(@NonNull TokenResponse result) {
+                mOIDCAccount.setTokenResponse(result);
+                mDispatcher.execute(() -> mResultCb.onSuccess(true));
             }
 
-            try {
-                mAuthAccount.mTokenResponse = new TokenResponse.Builder(tokenRequest).fromResponseJson(json).build();
-            } catch (JSONException jsonEx) {
-                mMainThread.execute(() -> mResultCb.onError("JsonException", AuthorizationException.fromTemplate(
-                        AuthorizationException.GeneralErrors.JSON_DESERIALIZATION_ERROR,
-                        jsonEx)));
-                return;
+            @Override
+            public void onError(String error, AuthorizationException exception) {
+                mDispatcher.execute(() -> mResultCb.onError("Failed to complete exchange request", exception));
             }
-
-            if (mAuthAccount.mTokenResponse.idToken != null) {
-                IdToken idToken;
-                try {
-                    idToken = IdToken.from(mAuthAccount.mTokenResponse.idToken);
-                } catch (IdToken.IdTokenException | JSONException ex) {
-                    mMainThread.execute(() -> mResultCb.onError("Unable to parse ID Token",
-                            AuthorizationException.fromTemplate(
-                                    AuthorizationException.GeneralErrors.ID_TOKEN_PARSING_ERROR,
-                                    ex)));
-                    return;
-                }
-
-                try {
-                    idToken.validate(tokenRequest, SystemClock.INSTANCE);
-                } catch (AuthorizationException ex) {
-                    mMainThread.execute(() -> mResultCb.onError("IdToken validation error", ex));
-                    return;
-                }
-            }
-            mMainThread.execute(() -> mResultCb.onSuccess(mAuthorizeClient = new AuthorizeClient(mAuthAccount)));
-
-        } catch (IOException ex) {
-            Logger.debugWithStack(ex, "Failed to complete exchange request IOE " + Thread.currentThread().getId());
-            exception = AuthorizationException.fromTemplate(
-                    AuthorizationException.GeneralErrors.NETWORK_ERROR, ex);
-            mMainThread.execute(() -> mResultCb.onError("Failed to complete exchange request", exception));
-
-        } catch (JSONException ex) {
-            Logger.debugWithStack(ex, "Failed to complete exchange request");
-            exception = AuthorizationException.fromTemplate(
-                    AuthorizationException.GeneralErrors.JSON_DESERIALIZATION_ERROR, ex);
-            mMainThread.execute(() -> mResultCb.onError("Failed to complete exchange request", exception));
-        } finally {
-            clearPreferences();
-            if (response != null) {
-                response.disconnect();
-            }
-        }
+        });
     }
 
     private Intent createAuthIntent() {
@@ -407,32 +398,12 @@ public final class AuthenticateClient {
         return found;
     }
 
-    private AuthorizationRequest createAuthRequest() {
-        AuthorizationRequest.Builder authRequestBuilder = new AuthorizationRequest.Builder(
-                mAuthAccount.getServiceConfig(),
-                mAuthAccount.getClientId(),
-                ResponseTypeValues.CODE,
-                mAuthAccount.getRedirectUri())
-                .setScopes(mAuthAccount.getScopes());
-
-        if (mPayload != null) {
-            authRequestBuilder.setAdditionalParameters(mPayload.getAdditionalParameters());
-            if (!TextUtils.isEmpty(mPayload.toString())) {
-                authRequestBuilder.setState(mPayload.getState());
-            }
-            if (!TextUtils.isEmpty(mPayload.getLoginHint())) {
-                authRequestBuilder.setLoginHint(mPayload.getLoginHint());
-            }
-        }
-        return authRequestBuilder.build();
-    }
-
-    private Intent extractResponseData(Uri responseUri) throws AuthorizationException {
+    private Intent extractResponseData(Activity activity, Uri responseUri) throws AuthorizationException {
         if (responseUri.getQueryParameterNames().contains(AuthorizationException.PARAM_ERROR)) {
             throw AuthorizationException.fromOAuthRedirect(responseUri);
         } else {
             if (mAuthRequest == null) {
-                restore();
+                restore(activity);
                 if (mAuthRequest == null) {
                     throw USER_CANCELED_AUTH_FLOW;
                 }
@@ -454,29 +425,22 @@ public final class AuthenticateClient {
         }
     }
 
-    public final class AuthenticateAPI {
-
-    }
-
     public static final class Builder {
-        private WeakReference<Activity> mActivity;
-        private AuthAccount mAuthAccount;
+        private Executor mCallbackExecutor;
+        private HttpConnectionFactory mConnectionFactory;
+        private OIDCAccount mOIDCAccount;
         private AuthenticationPayload mPayload;
         private int mCustomTabColor;
-        private String mUsername;
-        private String mPassword;
-        private LoginMethod mMethod = LoginMethod.BROWSER_TAB;
 
-        public Builder(Activity activity) {
-            mActivity = new WeakReference<>(activity);
+        public Builder() {
         }
 
         public AuthenticateClient create() {
             return new AuthenticateClient(this);
         }
 
-        public Builder withAccount(@NonNull AuthAccount account) {
-            mAuthAccount = account;
+        public Builder withAccount(@NonNull OIDCAccount account) {
+            mOIDCAccount = account;
             return this;
         }
 
@@ -490,14 +454,13 @@ public final class AuthenticateClient {
             return this;
         }
 
-        public Builder withMethod(@NonNull LoginMethod method) {
-            mMethod = method;
+        public Builder callbackExecutor(Executor executor) {
+            mCallbackExecutor = executor;
             return this;
         }
 
-        public Builder withCredential(@NonNull String username, @NonNull String password) {
-            mUsername = username;
-            mPassword = password;
+        public Builder httpConnectionFactory(HttpConnectionFactory connectionFactory) {
+            mConnectionFactory = connectionFactory;
             return this;
         }
     }

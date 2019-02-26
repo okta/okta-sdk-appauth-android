@@ -189,7 +189,8 @@ Licensor shall be under the terms and conditions of this License, without any
 additional terms or conditions. Notwithstanding the above, nothing herein shall
 supersede or modify the terms of any separate license agreement you may have
 executed with Licensor regarding such Contributions.
-6. Trademarks. This License does not grant permission to use the trade names,
+
+6. Trademarks. This License does not grant permission to use the trade names,
 trademarks, service marks, or product names of the Licensor, except as required
 for reasonable and customary use in describing the origin of the Work and
 reproducing the content of the NOTICE file.
@@ -282,7 +283,7 @@ the GPL and/or LGPL, or other similar license that require the source code
 and/or modifications to source code to be made available (as noted above), a
 copy of the source code corresponding to the binaries for such open source
 components and modifications thereto, if any, may be obtained by downloading the
-source code or by sending a request, with your name and address to: Okta, Inc.,
+source code or by sending a httpRequest, with your name and address to: Okta, Inc.,
 301 Brannan Street, Suite 100, San Francisco, CA 94107. All open source requests
 should clearly specify: OPEN SOURCE REQUEST, Attention General Counsel and the
 name of the requested component and Okta product. Okta will mail a copy of the

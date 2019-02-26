@@ -31,8 +31,7 @@ import android.widget.TextView;
 
 import com.okta.auth.AuthenticateClient;
 import com.okta.auth.ResultCallback;
-import com.okta.auth.AuthAccount;
-import com.okta.auth.AuthorizeClient;
+import com.okta.auth.OIDCAccount;
 import com.okta.auth.RequestCallback;
 import com.okta.openid.appauth.AuthorizationException;
 
@@ -47,8 +46,8 @@ public class TestLoginActivity extends AppCompatActivity {
     private static final String EXTRA_FAILED = "failed";
 
     private AuthenticateClient mOktaAuth;
-    private AuthAccount mOktaAccount;
-    private AuthorizeClient mClient;
+    private OIDCAccount mOktaAccount;
+    //private AuthorizeClient mClient;
     private TextView mTvStatus;
     private Button mButton;
     private Button mSignOut;
@@ -61,25 +60,24 @@ public class TestLoginActivity extends AppCompatActivity {
         mButton = findViewById(R.id.start_button);
         mSignOut = findViewById(R.id.logout_button);
         mSignOut.setOnClickListener(v -> {
-            if (mClient != null) {
-                mOktaAuth.logOut(new RequestCallback<Boolean, AuthorizationException>() {
-                    @Override
-                    public void onSuccess(@NonNull Boolean result) {
-                        Log.d("TestLoginActivity", "Logout request success: " + result);
-                    }
+            mOktaAuth.logOut(this, new RequestCallback<Boolean, AuthorizationException>() {
+                @Override
+                public void onSuccess(@NonNull Boolean result) {
+                    Log.d("TestLoginActivity", "Logout request success: " + result);
+                }
 
-                    @Override
-                    public void onError(String error, AuthorizationException exception) {
-                        Log.d("TestLoginActivity", "Logout request error: " + error, exception);
-                    }
-                });
-            }
+                @Override
+                public void onError(String error, AuthorizationException exception) {
+                    Log.d("TestLoginActivity", "Logout request error: " + error, exception);
+                }
+            });
+
         });
 
         mButton.setOnClickListener(v -> signIn());
         mTvStatus = findViewById(R.id.status);
 
-        mOktaAccount = new AuthAccount.Builder()
+        mOktaAccount = new OIDCAccount.Builder()
                 .clientId("0oaiv94wtjW7DHvvj0h7")
                 .redirectUri("com.okta.appauth.android.example:/callback")
                 .endSessionRedirectUri("com.okta.appauth.android.example:/logout")
@@ -87,7 +85,7 @@ public class TestLoginActivity extends AppCompatActivity {
                 .discoveryUri("https://dev-486177.oktapreview.com/oauth2/default")
                 .create();
 
-        mOktaAuth = new AuthenticateClient.Builder(this)
+        mOktaAuth = new AuthenticateClient.Builder()
                 .withAccount(mOktaAccount)
                 .withTabColor(getColorCompat(R.color.colorPrimary))
                 .create();
@@ -109,18 +107,16 @@ public class TestLoginActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
 
         // Pass result to AuthenticateClient for processing
-        mOktaAuth.handleAuthResult(requestCode, resultCode, data, new ResultCallback<AuthorizeClient, AuthorizationException>() {
+        mOktaAuth.handleAuthResult(this, requestCode, resultCode, data, new ResultCallback<Boolean, AuthorizationException>() {
             @Override
-            public void onSuccess(@NonNull AuthorizeClient clientAPI) {
+            public void onSuccess(@NonNull Boolean success) {
                 Log.d("TestLoginActivity", "SUCCESS");
-                mClient = clientAPI;
                 if (requestCode == AuthenticateClient.REQUEST_CODE_SIGN_OUT) {
                     mTvStatus.setText("sign out success");
                     mButton.setText("Sign In");
                     mButton.setOnClickListener(v -> signIn());
                     mSignOut.setVisibility(View.INVISIBLE);
                 } else if (requestCode == AuthenticateClient.REQUEST_CODE_SIGN_IN) {
-                    AuthorizeClient.AuthorizeAPI mClientAuthorizeAPI = clientAPI.getClientApi();
                     mTvStatus.setText("authentication success");
                     mButton.setText("Get profile");
                     mButton.setOnClickListener(v -> getProfile());
@@ -151,7 +147,7 @@ public class TestLoginActivity extends AppCompatActivity {
     }
 
     private void signIn() {
-        mOktaAuth.startAuthorization(new RequestCallback<Boolean, AuthorizationException>() {
+        mOktaAuth.logIn(this, new RequestCallback<Boolean, AuthorizationException>() {
             @Override
             public void onSuccess(Boolean success) {
                 Log.d("TestLoginActivity", "request success: " + success);
@@ -172,7 +168,7 @@ public class TestLoginActivity extends AppCompatActivity {
     }
 
     private void getProfile() {
-        mClient.getUserProfile(new RequestCallback<JSONObject, AuthorizationException>() {
+        mOktaAuth.getUserProfile(new RequestCallback<JSONObject, AuthorizationException>() {
             @Override
             public void onSuccess(@NonNull JSONObject result) {
                 mTvStatus.setText(result.toString());

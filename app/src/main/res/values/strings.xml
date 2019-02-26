@@ -19,7 +19,7 @@
     <string name="view_profile">View user info</string>
     <string name="userinfo_profile_content_description">User profile picture</string>
     <string name="login_hint_value">Username (e.g. test@example.com)</string>
-    <string name="account_id_description">The Username is optional. If specified, it is transmitted as a login_hint parameter in the authorization request.</string>
+    <string name="account_id_description">The Username is optional. If specified, it is transmitted as a login_hint parameter in the authorization httpRequest.</string>
     <string name="auth_options">Authorization options:</string>
     <string name="session_token">Session token:</string>
     <string name="choose_auth_flow">Please, select flow for Authorization</string>

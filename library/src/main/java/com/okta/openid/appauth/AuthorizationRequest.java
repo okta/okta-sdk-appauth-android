@@ -439,7 +439,7 @@ public class AuthorizationRequest extends AuthorizationManagementRequest {
 
     /**
      * String value used to associate a Client session with an ID Token, and to mitigate replay
-     * attacks. The value is passed through unmodified from the Authentication Request to the ID
+     * attacks. The value is passed through unmodified from the Authentication HttpRequest to the ID
      * Token. If this value is not explicitly set, this library will automatically add nonce and
      * perform appropriate validation of the ID Token. It is recommended that the default
      * implementation of this parameter be used wherever possible.
@@ -833,7 +833,7 @@ public class AuthorizationRequest extends AuthorizationManagementRequest {
         /**
          * Specifies the String value used to associate a Client session with an ID Token, and to
          * mitigate replay attacks. The value is passed through unmodified from the Authentication
-         * Request to the ID Token. If this value is not explicitly set, this library will
+         * HttpRequest to the ID Token. If this value is not explicitly set, this library will
          * automatically add nonce and perform appropriate validation of the ID Token. It is
          * recommended that the default implementation of this parameter be used wherever possible.
          *

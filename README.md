@@ -217,7 +217,7 @@ mOktaAuth.performAuthorizedRequest(new OktaAppAuth.BearerAuthRequest() {
 
     @Override
     public void onFailure(int httpResponseCode, Exception ex) {
-        // Handle failure to make your authorized request or a response with a 4xx or
+        // Handle failure to make your authorized httpRequest or a response with a 4xx or
         // 5xx HTTP status response code
     }
 );

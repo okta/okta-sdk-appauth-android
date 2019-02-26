@@ -12,17 +12,21 @@
  * See the License for the specific language governing permissions and limitations under the
  * License.
  */
-package com.okta.auth;
+package com.okta.auth.http;
 
 import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
 
-import com.okta.openid.appauth.AuthorizationException;
+import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.URL;
 
-public interface ResultCallback<T, U extends Exception> {
-    public void onSuccess(@NonNull T result);
+public interface HttpConnectionFactory {
 
-    public void onCancel();
-
-    public void onError(@NonNull String msg, @Nullable U exception);
+    /**
+     * Creates a connection to the specified URL.
+     *
+     * @throws IOException if an error occurs while attempting to establish the connection.
+     */
+    @NonNull
+    HttpURLConnection build(@NonNull URL url) throws IOException;
 }

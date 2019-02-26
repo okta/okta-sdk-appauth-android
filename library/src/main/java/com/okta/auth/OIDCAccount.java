@@ -18,17 +18,13 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.annotation.RawRes;
-import android.support.annotation.WorkerThread;
 import android.util.Log;
 
 import com.okta.android.json.InvalidJsonDocumentException;
 import com.okta.android.json.JsonParser;
-import com.okta.auth.http.HttpRequest;
-import com.okta.auth.http.HttpResponse;
-import com.okta.openid.appauth.AuthorizationException;
 import com.okta.openid.appauth.AuthorizationServiceConfiguration;
-import com.okta.openid.appauth.AuthorizationServiceDiscovery;
 import com.okta.openid.appauth.TokenResponse;
 
 import org.json.JSONException;
@@ -45,11 +41,10 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 
 /*
-    Okta OID application information
+    Okta OIDC application information
  */
-public class AuthAccount {
-    private static final String TAG = AuthAccount.class.getSimpleName();
-    private static final String TOKEN_RESPONSE = "token_response";
+public class OIDCAccount {
+    private static final String TAG = OIDCAccount.class.getSimpleName();
     private static final String CLIENT_ID = "client_id";
     private static final String REDIRECT_URI = "redirect_uri";
     private static final String END_SESSION_REDIRECT_URI = "end_session_redirect_uri";
@@ -62,14 +57,13 @@ public class AuthAccount {
     private Uri mDiscoveryUri;
     private Set<String> mScopes;
 
-    AuthenticateClient.LoginMethod mLoginMethod;
-    TokenResponse mTokenResponse;
+    private TokenResponse mTokenResponse;
 
     private static final String OIDC_DISCOVERY = ".well-known/openid-configuration";
 
     private AuthorizationServiceConfiguration mServiceConfig;
 
-    private AuthAccount(Builder builder) {
+    private OIDCAccount(Builder builder) {
         mClientId = builder.mClientId;
         mRedirectUri = builder.mRedirectUri;
         mEndSessionRedirectUri = builder.mEndSessionRedirectUri;
@@ -82,9 +76,6 @@ public class AuthAccount {
         editor.putString(REDIRECT_URI, mRedirectUri.toString());
         editor.putString(END_SESSION_REDIRECT_URI, mEndSessionRedirectUri.toString());
         editor.putString(DISCOVERY_URI, mDiscoveryUri.toString());
-        if (mTokenResponse != null) {
-            editor.putString(TOKEN_RESPONSE, mTokenResponse.jsonSerializeString());
-        }
         if (mServiceConfig != null) {
             editor.putString(OIDC_DISCOVERY, mServiceConfig.toJsonString());
         }
@@ -95,14 +86,18 @@ public class AuthAccount {
         mRedirectUri = Uri.parse(prefs.getString(REDIRECT_URI, null));
         mEndSessionRedirectUri = Uri.parse(prefs.getString(END_SESSION_REDIRECT_URI, null));
         mDiscoveryUri = Uri.parse(prefs.getString(DISCOVERY_URI, null));
-        String json = prefs.getString(TOKEN_RESPONSE, null);
-        if (json != null) {
-            mTokenResponse = TokenResponse.jsonDeserialize(json);
-        }
-        json = prefs.getString(OIDC_DISCOVERY, null);
+        String json = prefs.getString(OIDC_DISCOVERY, null);
         if (json != null) {
             mServiceConfig = AuthorizationServiceConfiguration.fromJson(json);
         }
+    }
+
+    public void setTokenResponse(TokenResponse token) {
+        mTokenResponse = token;
+    }
+
+    public boolean haveServiceConfig() {
+        return mServiceConfig != null;
     }
 
     public String getClientId() {
@@ -117,7 +112,7 @@ public class AuthAccount {
         return mEndSessionRedirectUri;
     }
 
-    private Uri getDiscoveryUri() {
+    public Uri getDiscoveryUri() {
         return mDiscoveryUri.buildUpon().appendEncodedPath(OIDC_DISCOVERY).build();
     }
 
@@ -129,48 +124,31 @@ public class AuthAccount {
         return mServiceConfig != null;
     }
 
-    AuthorizationServiceConfiguration getServiceConfig() {
+    public AuthorizationServiceConfiguration getServiceConfig() {
         return mServiceConfig;
+    }
+
+    void setServiceConfig(AuthorizationServiceConfiguration config) {
+        mServiceConfig = config;
     }
 
     public boolean isLoggedIn() {
         return mTokenResponse != null && (mTokenResponse.accessToken != null || mTokenResponse.idToken != null);
     }
 
-    @WorkerThread
-    void obtainConfiguration() throws AuthorizationException {
-        AuthorizationException exception = null;
-        HttpResponse response = null;
-        try {
-            response = new HttpRequest.Builder().setRequestMethod(HttpRequest.RequestMethod.GET)
-                    .setUri(getDiscoveryUri())
-                    .create()
-                    .executeRequest();
-            JSONObject json = response.asJson();
-            AuthorizationServiceDiscovery discovery =
-                    new AuthorizationServiceDiscovery(json);
-            mServiceConfig = new AuthorizationServiceConfiguration(discovery);
-        } catch (IOException ex) {
-            exception = AuthorizationException.fromTemplate(
-                    AuthorizationException.GeneralErrors.NETWORK_ERROR,
-                    ex);
-        } catch (JSONException ex) {
-            exception = AuthorizationException.fromTemplate(
-                    AuthorizationException.GeneralErrors.JSON_DESERIALIZATION_ERROR,
-                    ex);
-        } catch (AuthorizationServiceDiscovery.MissingArgumentException ex) {
-            exception = AuthorizationException.fromTemplate(
-                    AuthorizationException.GeneralErrors.INVALID_DISCOVERY_DOCUMENT,
-                    ex);
-        } finally {
-            if (response != null) {
-                response.disconnect();
-            }
-            if (exception != null) {
-                mServiceConfig = null;
-                throw exception;
-            }
-        }
+    public @Nullable
+    String getAccessToken() {
+        return mTokenResponse.accessToken;
+    }
+
+    public @Nullable
+    String getIdToken() {
+        return mTokenResponse.idToken;
+    }
+
+    public @Nullable
+    String getRefreshToken() {
+        return mTokenResponse.refreshToken;
     }
 
     public static class Builder {
@@ -183,8 +161,8 @@ public class AuthAccount {
         public Builder() {
         }
 
-        public AuthAccount create() {
-            return new AuthAccount(this);
+        public OIDCAccount create() {
+            return new OIDCAccount(this);
         }
 
         public Builder clientId(@NonNull String clientId) {
