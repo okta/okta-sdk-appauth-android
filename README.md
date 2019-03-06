@@ -19,7 +19,7 @@ You can then install the example APK onto an Android device or emulator.
 Add the `OktaAppAuth` dependency to your `build.gradle` file:
 
 ```bash
-implementation 'com.okta.android:appauth-android:0.2.2'
+implementation 'com.okta.android:appauth-android:0.2.3'
 ```
 
 ## Overview
@@ -192,6 +192,39 @@ private void fetchUserInfo() {
             // Handle a network error when fetching the user info data
         }
     });
+}
+```
+
+### Provide Connection Builder
+
+To override network request creating, you can implement `OktaConnnectionBuilder` interface and provide it in `init` method
+
+```java
+        mOktaAuth = OktaAppAuth.getInstance(this);
+
+        // Do any of your own setup of the Activity
+        mOktaAuth.init(
+                this,
+                new OktaAppAuth.OktaAuthListener() {
+                    @Override
+                    public void onSuccess() {
+                        // Handle a successful initialization (e.g. display login button)
+                    }
+
+                    @Override
+                    public void onTokenFailure(@NonNull AuthorizationException ex) {
+                        // Handle a failed initialization
+                    }
+                }, 
+                toolbarColor, 
+                new OktaConnectionBuilder() {
+                    @NonNull
+                    @Override
+                    public HttpURLConnection openConnection(@NonNull Uri uri) throws IOException {
+                        // return HttpURLConnection object
+                    }
+        });
+    }
 }
 ```
 

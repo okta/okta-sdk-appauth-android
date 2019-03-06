@@ -15,19 +15,25 @@
 
 package com.okta.appauth.android;
 
+import android.net.Uri;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.annotation.VisibleForTesting;
 import android.support.annotation.WorkerThread;
 import android.util.Log;
+
 import net.openid.appauth.AuthorizationException;
+import net.openid.appauth.connectivity.ConnectionBuilder;
+
 import okio.ByteString;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
+import java.net.URISyntaxException;
 import java.net.URL;
 
 /**
@@ -52,9 +58,11 @@ class RevokeTokenRequest {
      * Revocation URL.
      */
     private URL mRevokeUrl;
+    private ConnectionBuilder mConnectionBuilder;
 
-    private RevokeTokenRequest(URL revokeRequest) {
+    private RevokeTokenRequest(URL revokeRequest, ConnectionBuilder connectionBuilder) {
         this.mRevokeUrl = revokeRequest;
+        this.mConnectionBuilder = connectionBuilder;
     }
 
     static class Builder {
@@ -62,6 +70,7 @@ class RevokeTokenRequest {
         private String mToken;
         private String mClientId;
         private JSONObject mServiceConfig;
+        private ConnectionBuilder mConnectionBuilder;
 
         /**
          * creates a Builder for revoke request.
@@ -85,6 +94,11 @@ class RevokeTokenRequest {
          */
         Builder addClientId(String clientId) {
             this.mClientId = clientId;
+            return this;
+        }
+
+        Builder addConnectionBuilder(ConnectionBuilder connectionBuilder) {
+            this.mConnectionBuilder = connectionBuilder;
             return this;
         }
 
@@ -118,7 +132,7 @@ class RevokeTokenRequest {
                 return null;
             }
 
-            return new RevokeTokenRequest(url);
+            return new RevokeTokenRequest(url, mConnectionBuilder);
 
         }
 
@@ -131,7 +145,8 @@ class RevokeTokenRequest {
     void performRequest(@NonNull RevokeListener callback) {
 
         try {
-            HttpURLConnection urlConnection = (HttpURLConnection) mRevokeUrl.openConnection();
+            HttpURLConnection urlConnection = mConnectionBuilder.openConnection(
+                    Uri.parse(mRevokeUrl.toURI().toString()));
             urlConnection.setDoOutput(true);
             urlConnection.setInstanceFollowRedirects(false);
             urlConnection.setChunkedStreamingMode(0);
@@ -151,6 +166,10 @@ class RevokeTokenRequest {
 
             Log.d(TAG, "performRequest: responseCode " + urlConnection.getResponseCode());
         } catch (IOException e) {
+            Log.e(TAG, "performRequest: ", e);
+            callback.onError(AuthorizationException.TokenRequestErrors.INVALID_REQUEST);
+        }
+        catch (URISyntaxException e) {
             Log.e(TAG, "performRequest: ", e);
             callback.onError(AuthorizationException.TokenRequestErrors.INVALID_REQUEST);
         }

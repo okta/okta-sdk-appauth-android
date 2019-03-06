@@ -26,11 +26,11 @@ import net.openid.appauth.AuthorizationResponse;
 import net.openid.appauth.AuthorizationService;
 import net.openid.appauth.ClientAuthentication;
 import net.openid.appauth.TokenResponse;
+import net.openid.appauth.connectivity.ConnectionBuilder;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
-import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
@@ -41,12 +41,15 @@ class SessionAuthenticationService {
 
     private AuthStateManager mStateManager;
     private AuthorizationService mAuthService;
+    private ConnectionBuilder mConnectionBuilder;
 
     SessionAuthenticationService(
             AuthStateManager manager,
-            AuthorizationService authorizationService) {
+            AuthorizationService authorizationService,
+            ConnectionBuilder connectionBuilder) {
         mStateManager = manager;
         mAuthService = authorizationService;
+        mConnectionBuilder = connectionBuilder;
     }
 
     void performAuthorizationRequest(
@@ -106,8 +109,9 @@ class SessionAuthenticationService {
             final AuthorizationRequest request) {
         HttpURLConnection conn = null;
         try {
-            URL url = new URL(request.toUri().toString());
-            conn = (HttpURLConnection) url.openConnection();
+            conn = mConnectionBuilder.openConnection(request.toUri());
+            conn.setInstanceFollowRedirects(false);
+
 
             if (conn.getResponseCode() != HttpURLConnection.HTTP_MOVED_TEMP ||
                     (conn.getHeaderField("Location") == null ||

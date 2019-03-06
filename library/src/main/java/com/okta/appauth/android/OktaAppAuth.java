@@ -32,6 +32,7 @@ import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.util.Log;
+
 import net.openid.appauth.AppAuthConfiguration;
 import net.openid.appauth.AuthState;
 import net.openid.appauth.AuthState.AuthStateAction;
@@ -45,8 +46,10 @@ import net.openid.appauth.ClientAuthentication.UnsupportedAuthenticationMethod;
 import net.openid.appauth.EndSessionRequest;
 import net.openid.appauth.ResponseTypeValues;
 import net.openid.appauth.TokenResponse;
-import net.openid.appauth.connectivity.DefaultConnectionBuilder;
+import net.openid.appauth.connectivity.ConnectionBuilder;
+
 import okio.Okio;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -54,12 +57,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.ref.WeakReference;
 import java.net.HttpURLConnection;
-import java.net.URL;
 import java.nio.charset.Charset;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+
+
 
 /**
  * The SDK's main interaction point with an application. Other operations will stem from this
@@ -87,6 +91,8 @@ public class OktaAppAuth {
 
     @ColorInt
     protected int mCustomTabColor;
+
+    protected ConnectionBuilder mConnectionBuilder;
 
     protected WeakReference<Context> mContext;
 
@@ -154,14 +160,43 @@ public class OktaAppAuth {
             final Context context,
             final OktaAuthListener listener,
             @ColorInt int customTabColor) {
+
+        init(context, listener, customTabColor, DefaultOktaConnectionBuilder.INSTANCE);
+    }
+
+    /**
+     * Initializes the OktaAppAuth object. This will fetch an OpenID Connect discovery document
+     * from the issuer in the configuration to configure this instance for use.
+     *
+     * @param context        The application context
+     * @param listener       An OktaAuthListener that will be called once the initialization is
+     *                       complete
+     * @param customTabColor The color that will be passed to
+     *                       {@link CustomTabsIntent.Builder#setToolbarColor(int)}
+     * @param oktaConnectionBuilder        Implementation of {@link OktaConnectionBuilder}
+     */
+    @AnyThread
+    public void init(
+            final Context context,
+            final OktaAuthListener listener,
+            @ColorInt int customTabColor,
+            final OktaConnectionBuilder oktaConnectionBuilder) {
         mCustomTabColor = customTabColor;
+        mConnectionBuilder = new ConnectionBuilder() {
+            @NonNull
+            @Override
+            public HttpURLConnection openConnection(@NonNull Uri uri) throws IOException {
+                return oktaConnectionBuilder.openConnection(uri);
+            }
+        };
         mExecutor.submit(new Runnable() {
             @Override
             public void run() {
-                doInit(context, listener);
+                doInit(context, mConnectionBuilder, listener);
             }
         });
     }
+
 
     /**
      * Performs revocation of accessToken or refreshToken.
@@ -243,6 +278,7 @@ public class OktaAppAuth {
                                 .discoveryDoc.docJson)
                         .addClientId(mClientId.get())
                         .addToken(token)
+                        .addConnectionBuilder(mConnectionBuilder)
                         .build();
 
         request.performRequest(listener);
@@ -483,9 +519,8 @@ public class OktaAppAuth {
                                 .getAuthorizationServiceConfiguration()
                                 .discoveryDoc;
 
-                URL userInfoEndpoint = new URL(discovery.getUserinfoEndpoint().toString());
-
-                HttpURLConnection conn = (HttpURLConnection) userInfoEndpoint.openConnection();
+                HttpURLConnection conn = mConnectionBuilder.openConnection(
+                        discovery.getUserinfoEndpoint());
                 conn.setInstanceFollowRedirects(false);
                 return conn;
             }
@@ -602,7 +637,8 @@ public class OktaAppAuth {
     }
 
     @WorkerThread
-    private void doInit(final Context context, final OktaAuthListener listener) {
+    private void doInit(final Context context, final ConnectionBuilder connectionBuilder,
+                        final OktaAuthListener listener) {
         mInitializationListener.set(listener);
         recreateAuthorizationService(context);
 
@@ -638,7 +674,7 @@ public class OktaAppAuth {
                         handleConfigurationRetrievalResult(serviceConfiguration, ex);
                     }
                 },
-                DefaultConnectionBuilder.INSTANCE);
+                connectionBuilder);
     }
 
     /*
@@ -758,6 +794,7 @@ public class OktaAppAuth {
     private AuthorizationService createAuthorizationService(Context context) {
         Log.i(TAG, "Creating authorization service");
         AppAuthConfiguration.Builder builder = new AppAuthConfiguration.Builder();
+        builder.setConnectionBuilder(mConnectionBuilder);
 
         return new AuthorizationService(context, builder.build());
     }
@@ -785,7 +822,8 @@ public class OktaAppAuth {
         SessionAuthenticationService
                 sessionAuthenticationService = new SessionAuthenticationService(
                 mAuthStateManager,
-                createAuthorizationServiceIfNeeded());
+                createAuthorizationServiceIfNeeded(),
+                mConnectionBuilder);
         sessionAuthenticationService.performAuthorizationRequest(
                 mAuthRequest.get(),
                 sessionToken,

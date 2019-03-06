@@ -19,8 +19,10 @@ import android.app.Activity;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.support.annotation.MainThread;
+import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.annotation.VisibleForTesting;
 import android.support.annotation.WorkerThread;
@@ -34,7 +36,11 @@ import net.openid.appauth.AuthorizationResponse;
 import net.openid.appauth.AuthorizationService;
 import net.openid.appauth.ClientAuthentication;
 import net.openid.appauth.TokenResponse;
+import net.openid.appauth.connectivity.ConnectionBuilder;
 import net.openid.appauth.internal.Logger;
+
+import java.io.IOException;
+import java.net.HttpURLConnection;
 
 /**
  * This Activity is used to manage Authorization and end of session requests.
@@ -52,6 +58,7 @@ public class OktaManagementActivity extends Activity {
 
     private AuthorizationService mAuthService;
     private AuthStateManager mStateManager;
+    private ConnectionBuilder mConnectionBuilder;
 
     @VisibleForTesting
     PendingIntent mCompleteIntent;
@@ -84,10 +91,18 @@ public class OktaManagementActivity extends Activity {
         super.onCreate(savedInstanceState);
 
         mStateManager = AuthStateManager.getInstance(this);
+        mConnectionBuilder = new ConnectionBuilder() {
+            @NonNull
+            @Override
+            public HttpURLConnection openConnection(@NonNull Uri uri) throws IOException {
+                return DefaultOktaConnectionBuilder.INSTANCE.openConnection(uri);
+            }
+        };
 
         mAuthService = new AuthorizationService(
                 this,
                 new AppAuthConfiguration.Builder()
+                        .setConnectionBuilder(mConnectionBuilder)
                         .build());
 
         if (savedInstanceState == null) {

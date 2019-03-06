@@ -10,6 +10,7 @@ import com.okta.ReflectionUtils;
 import com.okta.TestUtils;
 
 import net.openid.appauth.*;
+import net.openid.appauth.connectivity.ConnectionBuilder;
 import net.openid.appauth.connectivity.DefaultConnectionBuilder;
 import okhttp3.mockwebserver.Dispatcher;
 import okhttp3.mockwebserver.MockResponse;
@@ -26,6 +27,9 @@ import org.mockito.MockitoAnnotations;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
 
+import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.HashSet;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -66,6 +70,17 @@ public class OktaAppAuthTest {
         ReflectionUtils.refectSetValue(sut, "mConfiguration", mConfiguration);
         sut.mExecutor = TestUtils.buildSyncynchronesExecutorService();
         when(mAuthStateManager.getCurrent()).thenReturn(mAuthState);
+        sut.mConnectionBuilder = new ConnectionBuilder() {
+            @NonNull
+            @Override
+            public HttpURLConnection openConnection(@NonNull Uri uri) throws IOException {
+                Preconditions.checkNotNull(uri, "url must not be null");
+                HttpURLConnection conn = (HttpURLConnection) new URL(uri.toString()).openConnection();
+                TlsProvider.enableIfNeeded(conn);
+                conn.setInstanceFollowRedirects(false);
+                return conn;
+            }
+        };
     }
 
     @Test

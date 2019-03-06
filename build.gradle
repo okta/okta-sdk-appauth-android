@@ -28,7 +28,7 @@ subprojects {
 
 ext {
     versionNum = 2
-    versionName = "0.2.2"
+    versionName = "0.2.3"
     versionDate = new Date()
 
     // These properties should remain in sync with the values from the AppAuth SDK

@@ -1,6 +1,7 @@
 package com.okta.appauth.android;
 
 import android.net.Uri;
+import android.support.annotation.NonNull;
 
 import com.okta.ConnectionBuilderForTest;
 import com.okta.TestUtils;
@@ -9,6 +10,7 @@ import net.openid.appauth.AppAuthConfiguration;
 import net.openid.appauth.AuthorizationRequest;
 import net.openid.appauth.AuthorizationService;
 import net.openid.appauth.ResponseTypeValues;
+import net.openid.appauth.connectivity.ConnectionBuilder;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -18,6 +20,7 @@ import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
 
 import java.io.IOException;
+import java.net.HttpURLConnection;
 
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
@@ -68,7 +71,13 @@ public class SessionAuthenticationServiceTest {
 
         mAuthService = new AuthorizationService(RuntimeEnvironment.application.getApplicationContext(), new AppAuthConfiguration.Builder().setConnectionBuilder(ConnectionBuilderForTest.INSTANCE).build());
 
-        sessionAuthenticationService = new SessionAuthenticationService(mAuthStateManager, mAuthService);
+        sessionAuthenticationService = new SessionAuthenticationService(mAuthStateManager, mAuthService, new ConnectionBuilder() {
+            @NonNull
+            @Override
+            public HttpURLConnection openConnection(@NonNull Uri uri) throws IOException {
+                return DefaultOktaConnectionBuilder.INSTANCE.openConnection(uri);
+            }
+        });
 
         request = authorizationRequest.build();
         dispatcher.nonce = request.nonce;
