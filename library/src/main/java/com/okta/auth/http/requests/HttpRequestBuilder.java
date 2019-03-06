@@ -89,6 +89,7 @@ public class HttpRequestBuilder {
                 return new AuthorizedRequest(this);
             case PROFILE:
                 mUri = mAccount.getServiceConfig().discoveryDoc.getUserinfoEndpoint();
+                mRequestMethod = HttpConnection.RequestMethod.POST;
                 return new AuthorizedRequest(this);
             default:
                 throw new IllegalArgumentException("Invalid request of type: " + mRequestType);
