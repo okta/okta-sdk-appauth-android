@@ -75,7 +75,8 @@ public class OktaManagementActivity extends Activity {
         Intent tokenExchangeIntent = new Intent(context, OktaManagementActivity.class);
         tokenExchangeIntent.putExtra(KEY_COMPLETE_INTENT, completeIntent);
         tokenExchangeIntent.putExtra(KEY_CANCEL_INTENT, cancelIntent);
-        return PendingIntent.getActivity(context, 0, tokenExchangeIntent, 0);
+        return PendingIntent.getActivity(context, 0, tokenExchangeIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT);
     }
 
     @Override
