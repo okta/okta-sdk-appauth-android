@@ -146,6 +146,7 @@ class SessionAuthenticationService {
                     .setState(state)
                     .build();
 
+            mStateManager.updateAfterAuthorization(authorizationResponse, null);
             return new AuthenticationResult<AuthorizationResponse>(
                     authorizationResponse, null);
         } catch (MalformedURLException ex) {
