@@ -19,7 +19,7 @@ You can then install the example APK onto an Android device or emulator.
 Add the `OktaAppAuth` dependency to your `build.gradle` file:
 
 ```bash
-implementation 'com.okta.android:appauth-android:0.2.3'
+implementation 'com.okta.android:appauth-android:0.2.4'
 ```
 
 ## Overview
