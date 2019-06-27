@@ -28,10 +28,13 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
 import com.okta.appauth.android.OktaAppAuth;
+
 import net.openid.appauth.AuthorizationException;
+
 import org.joda.time.format.DateTimeFormat;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -51,7 +54,7 @@ public class UserInfoActivity extends AppCompatActivity {
     private static final String TAG = "UserInfoActivity";
 
     private static final String KEY_USER_INFO = "userInfo";
-    private static final String EXTRA_FAILED = "failed";
+    private static final String EXTRA_FAILED_LOGOUT = "failed_logout";
 
     private OktaAppAuth mOktaAppAuth;
     private final AtomicReference<JSONObject> mUserInfoJson = new AtomicReference<>();
@@ -84,7 +87,10 @@ public class UserInfoActivity extends AppCompatActivity {
     @Override
     protected void onStart() {
         super.onStart();
-
+        if (getIntent().getBooleanExtra(EXTRA_FAILED_LOGOUT, false)) {
+            Toast.makeText(this, getString(R.string.auth_canceled),
+                    Toast.LENGTH_LONG).show();
+        }
         if (mOktaAppAuth.isUserLoggedIn()) {
             displayAuthorizationInfo();
         } else {
@@ -168,15 +174,18 @@ public class UserInfoActivity extends AppCompatActivity {
     @MainThread
     private void signOut() {
         displayLoading("Ending current session");
-        Intent completionIntent = new Intent(this, LoginActivity.class);
+        Intent completionIntent = new Intent(this, UserInfoActivity.class);
+        completionIntent.putExtra(EXTRA_FAILED_LOGOUT, false);
         Intent cancelIntent = new Intent(this, UserInfoActivity.class);
-        cancelIntent.putExtra(EXTRA_FAILED, true);
+        cancelIntent.putExtra(EXTRA_FAILED_LOGOUT, true);
         cancelIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
         completionIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK);
 
         mOktaAppAuth.signOutFromOkta(this,
-                PendingIntent.getActivity(this, 0, completionIntent, 0),
-                PendingIntent.getActivity(this, 0, cancelIntent, 0)
+                PendingIntent.getActivity(this, 0, completionIntent,
+                        PendingIntent.FLAG_CANCEL_CURRENT),
+                PendingIntent.getActivity(this, 0, cancelIntent,
+                        PendingIntent.FLAG_CANCEL_CURRENT)
         );
 
     }

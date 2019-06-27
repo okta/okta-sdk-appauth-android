@@ -41,7 +41,7 @@ import net.openid.appauth.AuthorizationException;
  */
 public class LoginActivity extends AppCompatActivity {
     private static final String TAG = "LoginActivity";
-    private static final String EXTRA_FAILED = "failed";
+    private static final String EXTRA_FAILED_LOGIN = "failed_login";
 
     private OktaAppAuth mOktaAppAuth;
 
@@ -66,7 +66,7 @@ public class LoginActivity extends AppCompatActivity {
     @Override
     protected void onStart() {
         super.onStart();
-        if (getIntent().getBooleanExtra(EXTRA_FAILED, false)) {
+        if (getIntent().getBooleanExtra(EXTRA_FAILED_LOGIN, false)) {
             showMessage(getString(R.string.auth_canceled));
         }
 
@@ -129,14 +129,18 @@ public class LoginActivity extends AppCompatActivity {
         displayLoading(getString(R.string.loading_authorizing));
 
         Intent completionIntent = new Intent(this, UserInfoActivity.class);
+        completionIntent.putExtra(EXTRA_FAILED_LOGIN, false);
+
         Intent cancelIntent = new Intent(this, LoginActivity.class);
-        cancelIntent.putExtra(EXTRA_FAILED, true);
+        cancelIntent.putExtra(EXTRA_FAILED_LOGIN, true);
         cancelIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
 
         mOktaAppAuth.login(
                 this,
-                PendingIntent.getActivity(this, 0, completionIntent, 0),
-                PendingIntent.getActivity(this, 0, cancelIntent, 0)
+                PendingIntent.getActivity(this, 0, completionIntent,
+                        PendingIntent.FLAG_CANCEL_CURRENT),
+                PendingIntent.getActivity(this, 0, cancelIntent,
+                        PendingIntent.FLAG_CANCEL_CURRENT)
         );
     }
 
