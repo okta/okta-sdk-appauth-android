@@ -1,4 +1,7 @@
-# Okta
+# Deprecated
+
+This library willl be archived on 3/20/2020 and is no longer in development.
+Please use the [OIDC SDK](https://github.com/okta/okta-oidc-android) instead.
 
 [![Build Status](https://travis-ci.org/okta/okta-sdk-appauth-android.svg?branch=master)](https://travis-ci.org/okta/okta-sdk-appauth-android)
 
